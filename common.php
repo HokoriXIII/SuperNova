@@ -13,7 +13,6 @@ global $debug, $sn_mvc, $template_result, $user;
 
 // Напоминание для Администрации, что игра отключена
 if($template_result[F_GAME_DISABLE]) {
-  // $disable_reason = sys_bbcodeParse($config->game_disable_reason); // Должна быть инициализирована выше по коду - в init.php
   echo '<div class="global_admin_warning">', $template_result[F_GAME_DISABLE_REASON], '</div>';
 }
 unset($disable_reason);
@@ -61,12 +60,12 @@ if(defined('IN_ADMIN') && IN_ADMIN === true) {
 
 require_once('includes/vars_menu.php');
 
-if($sn_mvc['model']['']) {
-  foreach($sn_mvc['model'][''] as $hook) {
-    if(is_callable($hook_call = (is_string($hook) ? $hook : (is_array($hook) ? $hook['callable'] : $hook->callable)))) {
-      call_user_func($hook_call);
-    }
-  }
-}
+//if($sn_mvc['model']['']) {
+//  foreach($sn_mvc['model'][''] as $hook) {
+//    if(is_callable($hook_call = (is_string($hook) ? $hook : (is_array($hook) ? $hook['callable'] : $hook->callable)))) {
+//      call_user_func($hook_call);
+//    }
+//  }
+//}
 
 sys_user_options_unpack($user);

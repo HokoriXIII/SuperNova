@@ -46,11 +46,17 @@ function sn_function_call($func_name, $func_arg = array())
   return $result;
 }
 
-function execute_hooks(&$hook_list, &$template) {
+/**
+ * @param        $hook_list
+ * @param        $template
+ * @param string $hook_type - тип хука 'model' или 'view'
+ * @param string $page_name - имя страницы, для которого должен был быть выполнен хук
+ */
+function execute_hooks(&$hook_list, &$template, $hook_type = null, $page_name = null) {
   if(!empty($hook_list)) {
     foreach($hook_list as $hook) {
       if(is_callable($hook_call = (is_string($hook) ? $hook : (is_array($hook) ? $hook['callable'] : $hook->callable)))) {
-        $template = call_user_func($hook_call, $template);
+        $template = call_user_func($hook_call, $template, $hook_type, $page_name);
       }
     }
   }
@@ -70,23 +76,21 @@ function sys_file_write($filename, $content)
 
 function get_game_speed($plain = false){return sn_function_call('get_game_speed', array($plain, &$result));}
 function sn_get_game_speed($plain = false, &$result) {
-  global $config;
-
-  return $result = $config->game_speed ? $config->game_speed : 1;
+  return $result = classSupernova::$config->game_speed ? classSupernova::$config->game_speed : 1;
 }
 
 function flt_server_flight_speed_multiplier($plain = false){return sn_function_call('flt_server_flight_speed_multiplier', array($plain, &$result));}
 function sn_flt_server_flight_speed_multiplier($plain = false, &$result) {
   global $config;
 
-  return $result = $config->fleet_speed;
+  return $result = classSupernova::$config->fleet_speed;
 }
 
 function game_resource_multiplier($plain = false){return sn_function_call('game_resource_multiplier', array($plain,&$result));}
 function sn_game_resource_multiplier($plain = false, &$result) {
   global $config;
 
-  return $result = $config->resource_multiplier;
+  return $result = classSupernova::$config->resource_multiplier;
 }
 
 /**
@@ -100,7 +104,7 @@ function get_mm_cost($plain = false){return sn_function_call('get_mm_cost', arra
 function sn_get_mm_cost($plain = false, &$result) {
   global $config;
 
-  return $result = $config->payment_currency_exchange_mm_ ? $config->payment_currency_exchange_mm_ : 20000;
+  return $result = classSupernova::$config->payment_currency_exchange_mm_ ? classSupernova::$config->payment_currency_exchange_mm_ : 20000;
 }
 
 /**
@@ -117,7 +121,7 @@ function get_exchange_rate($currency_symbol) {
   $config_field = 'payment_currency_exchange_' . $currency_symbol;
 
   // Заворачиваем получение стоимости ММ через перекрываемую процедуру
-  $exchange_rate = floatval($currency_symbol == 'mm_' ? get_mm_cost() : $config->$config_field);
+  $exchange_rate = floatval($currency_symbol == 'mm_' ? get_mm_cost() : classSupernova::$config->$config_field);
 
   return $exchange_rate;
 }
@@ -368,7 +372,7 @@ function CheckAbandonPlanetState(&$planet)
 {
   if($planet['destruyed'] && $planet['destruyed'] <= SN_TIME_NOW)
   {
-    db_planet_delete_by_id($planet['id']);
+    DBStaticPlanet::db_planet_delete_by_id($planet['id']);
   }
 }
 
@@ -382,9 +386,9 @@ function eco_get_total_cost($unit_id, $unit_level)
     $sn_group_resources_all = sn_get_groups('resources_all');
     $sn_group_resources_loot = sn_get_groups('resources_loot');
 
-    $rate[RES_METAL] = $config->rpg_exchange_metal;
-    $rate[RES_CRYSTAL] = $config->rpg_exchange_crystal / $config->rpg_exchange_metal;
-    $rate[RES_DEUTERIUM] = $config->rpg_exchange_deuterium / $config->rpg_exchange_metal;
+    $rate[RES_METAL] = classSupernova::$config->rpg_exchange_metal;
+    $rate[RES_CRYSTAL] = classSupernova::$config->rpg_exchange_crystal / classSupernova::$config->rpg_exchange_metal;
+    $rate[RES_DEUTERIUM] = classSupernova::$config->rpg_exchange_deuterium / classSupernova::$config->rpg_exchange_metal;
   }
 
   $unit_cost_data = get_unit_param($unit_id, 'cost');
@@ -670,12 +674,12 @@ function sys_unit_arr2str($unit_list)
 function mymail($email_unsafe, $title, $body, $from = '', $html = false) {
   global $config, $lang;
 
-  $from = trim($from ? $from : $config->game_adminEmail);
+  $from = trim($from ? $from : classSupernova::$config->game_adminEmail);
 
   $head  = '';
   $head .= "Content-Type: text/" . ($html ? 'html' : 'plain'). "; charset=utf-8 \r\n";
   $head .= "Date: " . date('r') . " \r\n";
-  $head .= "Return-Path: {$config->game_adminEmail} \r\n";
+  $head .= "Return-Path: {classSupernova::$config->game_adminEmail} \r\n";
   $head .= "From: {$from} \r\n";
   $head .= "Sender: {$from} \r\n";
   $head .= "Reply-To: {$from} \r\n";
@@ -847,7 +851,7 @@ function sn_sys_sector_buy($redirect = 'overview.php') {
 
   sn_db_transaction_start();
   $user = db_user_by_id($user['id'], true, '*');
-  $planetrow = db_planet_by_id($planetrow['id'], true, '*');
+  $planetrow = DBStaticPlanet::db_planet_by_id($planetrow['id'], true, '*');
   // Тут не надо делать обсчет - ресурсы мы уже посчитали, очередь (и количество зданий) - тоже
 //  $planetrow = sys_o_get_updated($user, $planetrow, SN_TIME_NOW);
 //  $user = $planetrow['user'];
@@ -860,7 +864,7 @@ function sn_sys_sector_buy($redirect = 'overview.php') {
         $user['username'], $user['id'], $planet_name_text, $lang['sys_planet_type'][$planetrow['planet_type']], $planetrow['id'], $sector_cost)
     )) {
       $sector_db_name = pname_resource_name(UNIT_SECTOR);
-      db_planet_set_by_id($planetrow['id'], "{$sector_db_name} = {$sector_db_name} + 1");
+      DBStaticPlanet::db_planet_set_by_id($planetrow['id'], "{$sector_db_name} = {$sector_db_name} + 1");
     } else {
       sn_db_transaction_rollback();
     }
@@ -984,23 +988,23 @@ function sn_player_nick_render_array_to_html($nick_array, &$result) {
   if(isset($nick_array[NICK_AUTH_LEVEL]) || isset($nick_array[NICK_PREMIUM])) {
     switch($nick_array[NICK_AUTH_LEVEL]) {
       case 4:
-        $highlight = $config->chat_highlight_developer;
+        $highlight = classSupernova::$config->chat_highlight_developer;
         break;
 
       case 3:
-        $highlight = $config->chat_highlight_admin;
+        $highlight = classSupernova::$config->chat_highlight_admin;
         break;
 
       case 2:
-        $highlight = $config->chat_highlight_operator;
+        $highlight = classSupernova::$config->chat_highlight_operator;
         break;
 
       case 1:
-        $highlight = $config->chat_highlight_moderator;
+        $highlight = classSupernova::$config->chat_highlight_moderator;
         break;
 
       default:
-        $highlight = isset($nick_array[NICK_PREMIUM]) ? $config->chat_highlight_premium : '';
+        $highlight = isset($nick_array[NICK_PREMIUM]) ? classSupernova::$config->chat_highlight_premium : '';
     }
 
     if($highlight) {
@@ -1115,12 +1119,12 @@ function sys_stat_get_user_skip_list() {
 
   $user_skip_list = array();
 
-  if($config->stats_hide_admins) {
+  if(classSupernova::$config->stats_hide_admins) {
     $user_skip_list[] = '`authlevel` > 0';
   }
 
-  if($config->stats_hide_player_list) {
-    $temp = explode(',', $config->stats_hide_player_list);
+  if(classSupernova::$config->stats_hide_player_list) {
+    $temp = explode(',', classSupernova::$config->stats_hide_player_list);
     foreach($temp as $user_id) {
       $user_id = floatval($user_id);
       if($user_id) {
@@ -1173,6 +1177,12 @@ function sn_sn_get_groups($groups, &$result)
 }
 
 // Format $value to ID
+/**
+ * @param     $value
+ * @param int $default
+ *
+ * @return float|int
+ */
 function idval($value, $default = 0)
 {
   $value = floatval($value);
@@ -1187,7 +1197,7 @@ function sn_unit_requirements_render($user, $planetrow, $unit_id, $field = 'requ
   $sn_data_unit = get_unit_param($unit_id);
 
   $result = is_array($result) ? $result : array();
-  if($sn_data_unit[$field] && !($sn_data_unit[P_UNIT_TYPE] == UNIT_MERCENARIES && $config->empire_mercenary_temporary))
+  if($sn_data_unit[$field] && !($sn_data_unit[P_UNIT_TYPE] == UNIT_MERCENARIES && classSupernova::$config->empire_mercenary_temporary))
   {
     foreach($sn_data_unit[$field] as $require_id => $require_level)
     {
@@ -1243,13 +1253,15 @@ function sn_sys_player_new_adjust($user_id, $planet_id, &$result) {
 }
 
 function array_merge_recursive_numeric($array1, $array2) {
-  foreach($array2 as $key => $value) {
+  if(!empty($array2) && is_array($array2)) {
+    foreach($array2 as $key => $value) {
 //    if(!isset($array1[$key]) || !is_array($array1[$key])) {
 //      $array1[$key] = $value;
 //    } else {
 //      $array1[$key] = array_merge_recursive_numeric($array1[$key], $value);
 //    }
-    $array1[$key] = !isset($array1[$key]) || !is_array($array1[$key]) ? $value : array_merge_recursive_numeric($array1[$key], $value);
+      $array1[$key] = !isset($array1[$key]) || !is_array($array1[$key]) ? $value : array_merge_recursive_numeric($array1[$key], $value);
+    }
   }
 
   return $array1;
@@ -1302,7 +1314,7 @@ function sn_sys_planet_core_transmute(&$user, &$planetrow) {
 
     sn_db_transaction_start();
     $user = db_user_by_id($user['id'], true, '*');
-    $planetrow = db_planet_by_id($planetrow['id'], true, '*');
+    $planetrow = DBStaticPlanet::db_planet_by_id($planetrow['id'], true, '*');
 //    $global_data = sys_o_get_updated($user, $planetrow['id'], SN_TIME_NOW);
 //    $user = $global_data['user'];
 //    $planetrow = $global_data['planet'];
@@ -1347,7 +1359,7 @@ function sn_sys_planet_core_transmute(&$user, &$planetrow) {
       )
     );
 
-    db_planet_set_by_id($planetrow['id'], "`density` = {$new_density}, `density_index` = {$new_density_index}");
+    DBStaticPlanet::db_planet_set_by_id($planetrow['id'], "`density` = {$new_density}, `density_index` = {$new_density_index}");
     sn_db_transaction_commit();
 
     $planetrow['density'] = $new_density;
@@ -1400,7 +1412,7 @@ function get_resource_exchange()
 
     foreach($rates as &$rate)
     {
-      $rate = $config->$rate;
+      $rate = classSupernova::$config->$rate;
     }
   }
 
@@ -1423,11 +1435,6 @@ function get_unit_cost_in(&$cost, $in_resource = RES_METAL)
   }
 
   return $metal_cost;
-}
-
-function get_player_current_expeditions(&$user) {
-  $FlyingExpeditions  = doquery("SELECT COUNT(fleet_owner) AS `expedi` FROM {{fleets}} WHERE `fleet_owner` = {$user['id']} AND `fleet_mission` = '" . MT_EXPLORE . "';", true);
-  return $FlyingExpeditions['expedi'];
 }
 
 function get_player_max_expeditons(&$user, $astrotech = -1){return sn_function_call('get_player_max_expeditons', array(&$user, $astrotech, &$result));}
@@ -1461,7 +1468,7 @@ function get_player_max_colonies(&$user, $astrotech = -1) {
       $astrotech = mrc_get_level($user, false, TECH_ASTROTECH);
       $colonies = $astrotech - $expeditions;
 
-      $user[UNIT_PLAYER_COLONIES_MAX] = $config->player_max_colonies < 0 ? $colonies : min($config->player_max_colonies, $colonies);
+      $user[UNIT_PLAYER_COLONIES_MAX] = classSupernova::$config->player_max_colonies < 0 ? $colonies : min(classSupernova::$config->player_max_colonies, $colonies);
     }
 
     return $user[UNIT_PLAYER_COLONIES_MAX];
@@ -1470,33 +1477,13 @@ function get_player_max_colonies(&$user, $astrotech = -1) {
     // $astrotech = mrc_get_level($user, false, TECH_ASTROTECH);
     $colonies = $astrotech - $expeditions;
 
-    return $config->player_max_colonies < 0 ? $colonies : min($config->player_max_colonies, $colonies);
+    return classSupernova::$config->player_max_colonies < 0 ? $colonies : min(classSupernova::$config->player_max_colonies, $colonies);
   }
 }
 
 function get_player_current_colonies(&$user)
 {
-  return $user[UNIT_PLAYER_COLONIES_CURRENT] = isset($user[UNIT_PLAYER_COLONIES_CURRENT]) ? $user[UNIT_PLAYER_COLONIES_CURRENT] : max(0, db_planet_count_by_type($user['id']) - 1);
-}
-
-function flt_send_back(&$fleet_row)
-{
-  $fleet_id = round(isset($fleet_row['fleet_id']) && $fleet_row['fleet_id'] ? $fleet_row['fleet_id'] : $fleet_row);
-  if(!$fleet_id)
-  {
-    return false;
-  }
-
-  return doquery("UPDATE {{fleets}} SET `fleet_mess` = 1 WHERE `fleet_id` = {$fleet_id} LIMIT 1;");
-}
-
-function flt_destroy(&$fleet_row) {
-  $fleet_id = round(isset($fleet_row['fleet_id']) && $fleet_row['fleet_id'] ? $fleet_row['fleet_id'] : $fleet_row);
-  if(!$fleet_id) {
-    return false;
-  }
-
-  return doquery("DELETE FROM {{fleets}} WHERE `fleet_id` = {$fleet_id} LIMIT 1;");
+  return $user[UNIT_PLAYER_COLONIES_CURRENT] = isset($user[UNIT_PLAYER_COLONIES_CURRENT]) ? $user[UNIT_PLAYER_COLONIES_CURRENT] : max(0, DBStaticPlanet::db_planet_count_by_type($user['id']) - 1);
 }
 
 function str_raw2unsafe($raw) {
@@ -1515,10 +1502,8 @@ function sn_sn_powerup_get_price_matrix($powerup_id, $powerup_unit = false, $lev
   $result = array();
 
   $powerup_data = get_unit_param($powerup_id);
-  //pdump($powerup_data, '$powerup_data');
   $is_upgrade = !empty($powerup_unit) && $powerup_unit;
 
-  // pdump($powerup_unit, '$powerup_unit');
   $level_current = $term_original = $time_left = 0;
   if($is_upgrade) {
     $time_finish = strtotime($powerup_unit['unit_time_finish']);
@@ -1597,7 +1582,7 @@ function sn_setcookie($name, $value = null, $expire = null, $path = SN_ROOT_RELA
 function market_get_autoconvert_cost() {
   global $config;
 
-  return $config->rpg_cost_exchange ? $config->rpg_cost_exchange * 3 : 3000;
+  return classSupernova::$config->rpg_cost_exchange ? classSupernova::$config->rpg_cost_exchange * 3 : 3000;
 }
 
 function print_rr($var, $capture = false) {
@@ -1635,4 +1620,37 @@ function sec_player_ip() {
   );
 
   return array_map('db_escape', $ip);
+}
+
+
+function price_matrix_templatize(&$price_matrix_plain, &$price_matrix_original, &$price_matrix_upgrade, $user_dark_matter) {
+  $prices = array();
+  foreach($price_matrix_original as $level_num => $level_data) {
+    $price_per_period = array();
+    foreach($level_data as $period => $price) {
+      $price_text = pretty_number($price, true, $user_dark_matter, false, false);
+      $price_per_period[$period] = array(
+        'PERIOD' => $period,
+        'PRICE_ORIGIN'  => $price,
+        'PRICE_ORIGIN_TEXT'  => $price_text['text'],
+        'PRICE_ORIGIN_CLASS'  => $price_text['class'],
+        'PRICE_UPGRADE' => $price_matrix_upgrade[$level_num][$period],
+        'PRICE_UPGRADE_TEXT' => pretty_number($price_matrix_upgrade[$level_num][$period], true),
+      );
+      if(isset($price_matrix_plain[$level_num][$period])) {
+        $price_per_period[$period] += array(
+          'PRICE_PLAIN_PERCENT'  => ceil(100 - ($price / $price_matrix_plain[$level_num][$period]) * 100),
+          'PRICE_PLAIN'  => $price_matrix_plain[$level_num][$period],
+          'PRICE_PLAIN_TEXT'  => pretty_number($price_matrix_plain[$level_num][$period], true),
+        );
+      }
+    }
+
+    $prices[$level_num] = array(
+      '.' => array('period' => $price_per_period),
+      'LEVEL'   => $level_num,
+    );
+  }
+
+  return $prices;
 }

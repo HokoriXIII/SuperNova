@@ -46,7 +46,7 @@ function sn_fleet_page3() {
   sn_db_transaction_start();
 
   $user = db_user_by_id($user['id'], true);
-  $planetrow = db_planet_by_id($planetrow['id'], true);
+  $planetrow = DBStaticPlanet::db_planet_by_id($planetrow['id'], true);
 
   if ($target_mission == MT_EXPLORE) {
     if ($MaxExpeditions == 0 ) {
@@ -184,19 +184,13 @@ function sn_fleet_page3() {
 
   $FleetStorage        = 0;
   $FleetShipCount      = 0;
-//pdump($fleetarray );
   $db_changeset = array();
   foreach ($fleetarray as $Ship => $Count) {
     $FleetStorage    += get_unit_param($Ship, P_CAPACITY) * $Count;
-//    $fleet_array     .= "{$Ship},{$Count};";
-//    $ship_db_name = get_unit_param($Ship, P_NAME);
-//    $FleetSubQRY     .= "`{$ship_db_name}` = `{$ship_db_name}` - {$Count} , ";
     $db_changeset['unit'][] = sn_db_unit_changeset_prepare($Ship, -$Count, $user, $planetrow['id']);
   }
   $fleet_array = sys_unit_arr2str($fleetarray);
   $FleetShipCount  += array_sum($fleetarray);
-//pdump($fleet_array);
-//pdump($db_changeset);
   $FleetStorage        -= $consumption;
 
   if ( $StorageNeeded > $FleetStorage) {
@@ -209,27 +203,34 @@ function sn_fleet_page3() {
     message ("<font color=\"red\"><b>". $lang['fl_no_resources'] ."</b></font>", $lang['fl_error'], 'fleet' . DOT_PHP_EX, 2);
   }
 
-  $QryInsertFleet  = "INSERT INTO {{fleets}} SET ";
-  $QryInsertFleet .= "`fleet_owner` = '{$user['id']}', `fleet_mission` = '{$target_mission}', ";
-  $QryInsertFleet .= "`fleet_amount` = '{$FleetShipCount}', `fleet_array` = '{$fleet_array}', `fleet_start_time` = '{$fleet['start_time']}', ";
-  if($planetrow['id']) {
-    $QryInsertFleet .= "`fleet_start_planet_id` = '{$planetrow['id']}', ";
-  }
-  $QryInsertFleet .= "`fleet_start_galaxy` = '". intval($planetrow['galaxy']) ."', ";
-  $QryInsertFleet .= "`fleet_start_system` = '". intval($planetrow['system']) ."', ";
-  $QryInsertFleet .= "`fleet_start_planet` = '". intval($planetrow['planet']) ."', ";
-  $QryInsertFleet .= "`fleet_start_type` = '". intval($planetrow['planet_type']) ."', ";
-  $QryInsertFleet .= "`fleet_end_time` = '{$fleet['end_time']}', `fleet_end_stay` = '{$StayTime}', ";
-  if($TargetPlanet['id']) {
-    $QryInsertFleet .= "`fleet_end_planet_id` = '{$TargetPlanet['id']}', ";
-  }
-  $QryInsertFleet .= "`fleet_end_galaxy` = '{$galaxy}', `fleet_end_system` = '{$system}', `fleet_end_planet` = '{$planet}', `fleet_end_type` = '{$planet_type}', ";
-  $QryInsertFleet .= "`fleet_resource_metal` = '{$TransMetal}', `fleet_resource_crystal` = '{$TransCrystal}', `fleet_resource_deuterium` = '{$TransDeuterium}', ";
-  $QryInsertFleet .= "`fleet_target_owner` = '{$TargetPlanet['id_owner']}', `fleet_group` = '{$fleet_group}', `start_time` = " . SN_TIME_NOW . ";";
-  doquery( $QryInsertFleet);
-  $fleet_id = db_insert_id();
+  $fleet_set = array(
+    'fleet_owner' => $user['id'],
+    'fleet_mission' => $target_mission,
+    'fleet_amount' => $FleetShipCount,
+    'fleet_array' => $fleet_array,
+    'fleet_start_time' => $fleet['start_time'],
+    'fleet_start_planet_id' => !empty($planetrow['id']) ? $planetrow['id'] : null,
+    'fleet_start_galaxy' => $planetrow['galaxy'],
+    'fleet_start_system' => $planetrow['system'],
+    'fleet_start_planet' => $planetrow['planet'],
+    'fleet_start_type'   => $planetrow['planet_type'],
+    'fleet_end_time' => $fleet['end_time'],
+    'fleet_end_stay' => $StayTime,
+    'fleet_end_planet_id' => !empty($TargetPlanet['id']) ? $TargetPlanet['id'] : null,
+    'fleet_end_galaxy' => !empty($galaxy) ? $galaxy : 0,
+    'fleet_end_system' => !empty($system) ? $system : 0,
+    'fleet_end_planet' => !empty($planet) ? $planet : 0,
+    'fleet_end_type' => !empty($planet_type) ? $planet_type : 0,
+    'fleet_target_owner' => $TargetPlanet['id_owner'],
+    'fleet_group' => $fleet_group,
+    'fleet_resource_metal' => $TransMetal,
+    'fleet_resource_crystal' => $TransCrystal,
+    'fleet_resource_deuterium' => $TransDeuterium,
+    'start_time' => SN_TIME_NOW,
+  );
+  $fleet_id = fleet_insert_set($fleet_set);
 
-  db_planet_set_by_id($planetrow['id'], "`metal` = `metal` - {$TransMetal}, `crystal` = `crystal` - {$TransCrystal}, `deuterium` = `deuterium` - {$TransDeuterium} - {$consumption}");
+  DBStaticPlanet::db_planet_set_by_id($planetrow['id'], "`metal` = `metal` - {$TransMetal}, `crystal` = `crystal` - {$TransCrystal}, `deuterium` = `deuterium` - {$TransDeuterium} - {$consumption}");
   db_changeset_apply($db_changeset);
 
   $template = gettemplate('fleet3', true);
@@ -242,7 +243,7 @@ function sn_fleet_page3() {
 //  }
 
   if(is_array($captain)) {
-    db_unit_set_by_id($captain['unit_id'], "`unit_location_type` = " . LOC_FLEET . ", `unit_location_id` = {$fleet_id}");
+    DBStaticUnit::db_unit_set_by_id($captain['unit_id'], "`unit_location_type` = " . LOC_FLEET . ", `unit_location_id` = {$fleet_id}");
   }
 
   $template_route = array(
@@ -294,7 +295,7 @@ function sn_fleet_page3() {
   ));
 
   sn_db_transaction_commit();
-  $planetrow = db_planet_by_id($planetrow['id']);
+  $planetrow = DBStaticPlanet::db_planet_by_id($planetrow['id']);
 
   $template->assign_recursive($template_result);
   display($template, $lang['fl_title']);

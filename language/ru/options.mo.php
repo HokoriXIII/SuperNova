@@ -16,7 +16,7 @@
 *
 * @package language
 * @system [Russian]
-* @version 40b0.11
+* @version 41a3.2
 *
 */
 
@@ -75,6 +75,7 @@ $a_lang_array = (array(
 
   'opt_navbar_title' => 'Панель навигации',
   'opt_navbar_description' => 'Панель навигации (или попросту "навбар") располагается в самом верху экрана. Этот раздел позволяет настроить вид навбара',
+  'PLAYER_OPTION_NAVBAR_PLANET_VERTICAL' => 'Вертикальная панель ресурсов',
   'PLAYER_OPTION_NAVBAR_RESEARCH_WIDE' => 'Широкая кнопка исследований (старый вид)',
   'PLAYER_OPTION_NAVBAR_DISABLE_EXPEDITIONS' => 'Отключить кнопку экспедиций',
   'PLAYER_OPTION_NAVBAR_DISABLE_FLYING_FLEETS' => 'Отключить кнопку летящих флотов',
@@ -90,6 +91,11 @@ $a_lang_array = (array(
   'PLAYER_OPTION_TECH_TREE_TABLE' => 'Страница Технологий в виде таблицы (старый вид)',
   'PLAYER_OPTION_ANIMATION_DISABLED' => 'Отключить эффекты анимации',
   'PLAYER_OPTION_PROGRESS_BARS_DISABLED' => 'Отключить прогресс-бары',
+
+  'PLAYER_OPTION_FLEET_SHIP_SELECT_OLD' => 'Количество кораблей в отдельной колонке (старый вид)',
+  'PLAYER_OPTION_FLEET_SHIP_HIDE_SPEED' => 'Не показывать скорость корабля',
+  'PLAYER_OPTION_FLEET_SHIP_HIDE_CAPACITY' => 'Не показывать ёмкость трюмов корабля',
+  'PLAYER_OPTION_FLEET_SHIP_HIDE_CONSUMPTION' => 'Не показывать потребление топлива корабля',
 
   'opt_chk_skin' => 'Использовать оформление',
   'opt_adm_title' => 'Опции администрирования',
@@ -186,5 +192,8 @@ $a_lang_array = (array(
   'opt_build_autoconvert_hide' => 'Скрыть кнопку автоконвертации',
 
   'opt_universe_title' => 'Вселенная',
+
+  'option_fleets' => 'Флоты',
+  'option_fleet_send' => 'Отправка флота',
 
 ));

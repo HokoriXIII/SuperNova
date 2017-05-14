@@ -65,7 +65,8 @@ function flt_mission_spy(&$mission_data)
 
   if(!isset($target_user_row['id']) || !isset($target_planet_row['id']) || !isset($spying_user_row['id']))
   {
-    doquery("UPDATE {{fleets}} SET `fleet_mess` = 1 WHERE `fleet_id` = {$fleet_row['fleet_id']} LIMIT 1;");
+//    doquery("UPDATE {{fleets}} SET `fleet_mess` = 1 WHERE `fleet_id` = {$fleet_row['fleet_id']} LIMIT 1;");
+    fleet_send_back($fleet_row);
     return;
   }
 
@@ -154,13 +155,14 @@ function flt_mission_spy(&$mission_data)
 
     if($spy_detected)
     {
-      doquery("DELETE FROM {{fleets}} WHERE `fleet_id` = '{$fleet_row['fleet_id']}' LIMIT 1;");
+//      doquery("DELETE FROM {{fleets}} WHERE `fleet_id` = '{$fleet_row['fleet_id']}' LIMIT 1;");
+      db_fleet_delete($fleet_row['fleet_id']);
 
       $debris_planet_id = $target_planet_row['planet_type'] == PT_PLANET ? $target_planet_row['id'] : $target_planet_row['parent_planet'];
 
       $spy_cost = get_unit_param(SHIP_SPY, P_COST);
 
-      db_planet_set_by_id($debris_planet_id,
+      DBStaticPlanet::db_planet_set_by_id($debris_planet_id,
         "`debris_metal` = `debris_metal` + ". floor($spy_probes * $spy_cost[RES_METAL] * 0.3) .", `debris_crystal` = `debris_crystal` + ". floor($spy_probes * $spy_cost[RES_CRYSTAL] * 0.3));
 
       $target_message .= "<br />{$lang['sys_mess_spy_destroyed_enemy']}";
@@ -176,7 +178,8 @@ function flt_mission_spy(&$mission_data)
 
   if(!$spy_detected)
   {
-    doquery("UPDATE {{fleets}} SET `fleet_mess` = '1' WHERE `fleet_id` = '{$fleet_row['fleet_id']}' LIMIT 1;");
+//    doquery("UPDATE {{fleets}} SET `fleet_mess` = '1' WHERE `fleet_id` = '{$fleet_row['fleet_id']}' LIMIT 1;");
+    fleet_send_back($fleet_row);
   }
 
   return $result;

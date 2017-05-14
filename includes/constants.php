@@ -2,10 +2,10 @@
 
 defined('INSIDE') or die('Hacking attempt');
 
-define('DB_VERSION', '40');
-define('SN_RELEASE', '40');
-define('SN_VERSION', '40c1.3');
-define('SN_RELEASE_STABLE', '39d2'); // Latest stable release
+define('DB_VERSION', '41');
+define('SN_RELEASE', '41');
+define('SN_VERSION', '41d0');
+define('SN_RELEASE_STABLE', '41d0'); // Latest stable release
 
 // Game type constants starts with GAME_
 define('GAME_SUPERNOVA', 0);
@@ -23,6 +23,7 @@ define('PERIOD_MONTH', PERIOD_DAY * 30);
 define('PERIOD_YEAR', PERIOD_DAY * 365);
 define('PERIOD_FOREVER', PERIOD_YEAR * 100);
 
+define('PERIOD_MINUTE_2' , PERIOD_MINUTE * 2);
 define('PERIOD_MINUTE_3' , PERIOD_MINUTE * 3);
 define('PERIOD_MINUTE_5' , PERIOD_MINUTE * 5);
 define('PERIOD_MINUTE_10', PERIOD_MINUTE * 10);
@@ -219,6 +220,10 @@ define('RPG_BUILD_AUTOCONVERT', 40);
 define('RPG_EVENT_SUPERBORN', 41);
 define('RPG_REFERRAL_BOUGHT_MM', 42);
 define('RPG_HALLOWEEN', 43);
+define('RPG_CHRISTMAS', 44);
+define('RPG_EVENT_BIRTHDAY', 45);
+define('RPG_EVENT_BIRTHDAY_COMPILED', 46);
+define('RPG_BATCH_OPERATION', 47);
 
 
 
@@ -471,6 +476,8 @@ define('REGISTER_ERROR_PLAYER_NAME_EXISTS', 43);
 define('LOGIN_ERROR_NO_ACCOUNT_FOR_COOKIE_SET', 44);
 define('PASSWORD_RESTORE_ERROR_CODE_OK_BUT_NO_ACCOUNT_FOR_EMAIL', 45);
 define('PASSWORD_RESTORE_ERROR_CODE_EMPTY', 46);
+
+define('REGISTER_EXTERNAL_AUTH_ERROR', 1000);
 
 
 
@@ -926,6 +933,8 @@ define('UNIT_PLAN_DEF_SHIELD_PLANET', 1106);
 define('UNIT_PLAN_SHIP_ORBITAL_HEAVY', 1107);
 
 define('UNIT_PREMIUM', 1200);
+define('UNIT_MASS_OPERATIONS', 1290);
+define('UNIT_MASS_OPERATIONS_TEST_DRIVE', 1291);
 define('UNIT_SECTOR', 1300);
 define('UNIT_RACE', 1400);
 define('UNIT_CAPTAIN', 1500);
@@ -975,6 +984,7 @@ define('UNIT_AWARD_MEDAL', 2200); // Медали за Серъезные Дос
 define('UNIT_AWARD_MEDAL_BLITZ_R0_PLACE1', 2201); // Блиц-сервер, участник 0-го раунда, 1-е место
 define('UNIT_AWARD_MEDAL_BLITZ_R0_PLACE2', 2202); // Блиц-сервер, участник 0-го раунда, 2-е место
 define('UNIT_AWARD_MEDAL_BLITZ_R0_PLACE3', 2203); // Блиц-сервер, участник 0-го раунда, 3-е место
+define('UNIT_AWARD_MEDAL_2016_WOMEN_DAY_BEST', 2204);  // Медаль Лучшему Кавалеру за максимум потраченной ММ/максимум одаренных женщин Женщине от Мужчины во время ивента 8 марта 2016 года
 
 define('UNIT_AWARD_MEMORY', 2300); // Памятные знаки за существование и участие - например "4 года в игре". "Был онлайн в новогоднюю ночь 2013". итд
 define('UNIT_AWARD_MEMORY_IMMORTAL', 2301);  // Бессмертный
@@ -985,6 +995,7 @@ define('UNIT_AWARD_MEMORY_SUPER_BORN_2015_BRONZE', 2305); // День Рожде
 define('UNIT_AWARD_MEMORY_SUPER_BORN_2015_SILVER', 2306); // День Рождения СН
 define('UNIT_AWARD_MEMORY_SUPER_BORN_2015_GOLD', 2307); // День Рождения СН
 define('UNIT_AWARD_MEMORY_SUPER_BORN_2015_PLATINUM', 2308); // День Рождения СН
+define('UNIT_AWARD_MEMORY_2016_WOMEN_DAY', 2309);  // Значек за подарок Женщине от Мужчины во время ивента 8 марта 2016 года
 
 define('UNIT_AWARD_PENNANT', 2400); // Переходящий вымпел - индикация статуса на сервере: "Топ-1", "Топ", "Сабтоп", "Самый большой флот" итд
 define('UNIT_AWARD_BADGE', 2600); // Бейджики/значки за ачивки - например, "Построил 1000 кораблей"
@@ -1045,9 +1056,45 @@ define('UNIT_EVENT_HALLOWEEN_2015_SCREAM_MASK', 3058);
 define('UNIT_EVENT_HALLOWEEN_2015_CANDY', 3059);
 define('UNIT_EVENT_HALLOWEEN_2015_KRUEGER', 3060);
 define('UNIT_EVENT_HALLOWEEN_2015_VOORHEES', 3061);
+define('UNIT_EVENT_HALLOWEEN_2015_LEATHERFACE', 3062);
+define('UNIT_EVENT_HALLOWEEN_2015_CHUCKY', 3063);
+define('UNIT_EVENT_HALLOWEEN_2015_JIGSAW', 3064);
+define('UNIT_EVENT_HALLOWEEN_2015_KRUEGER_HAT', 3065);
+define('UNIT_EVENT_HALLOWEEN_2015_KRUEGER_SWEATER', 3066);
+define('UNIT_EVENT_HALLOWEEN_2015_KRUEGER_GLOVE', 3067);
 
-// 3070
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS', 3100); // SuperNova Christmas Gather Units
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_DED', 3102); // 01 - Дед Мороз 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_SNEGURKA', 3103); // 02 - Снегурочка 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_GOOD_FELLAS', 3104); // 03 - Список Хороших Детей 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_SANTA_HAT', 3105); // 06 - Настоящая шапка деда мороза 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_SACK_GIFT', 3106); // 07 - Мешок с подарками 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_CALENDAR', 3107); // 08 - 31 декабря календаря 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_RUDOLPH', 3108); // 04 - Рудольф 1 "Рудольф всегда отличался от других оленей..."
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_DEER', 3109); // 45 - Олени 6
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_TREE_EMPIRE', 3110); // 10 - Имперская ёлка 2
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_MORGUROCHKA', 3111); // 13 - Моргурочка - мутантный дед-мороз 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_HOBO', 3112); // 20 - Безработный наёмник (Дед у холодильника, Дед с подарками) 2
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_SACK_TRICK', 3113); // 80 - Мешок с новогодними фокусами 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_KITTEN', 3114); // 30 - Новогодний котёнок 2
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_SANTA_MASK', 3115); // 55 - Маска деда-мороза 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_SANTA_COSTUME', 3116); // 57 - Игоровой Костюм деда-мороза 2
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_SACK_EMPTY', 3117); // 95 - Пустой мешок от подарков 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_BLIZZARD_BALL', 3118); // 05 - Метель в шарике 7
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_BEVERAGE', 3119); // 15 - Новогодний напиток 7
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_GINGER', 3120); // 70 - Пряничный человечек - 1
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_CANDY', 3121); // 96 - Конфета 5 // Трость для пряничного человечка
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_POSTCARD', 3122); // 40 - Новогодняя открытка 2
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_BELLS', 3123); // 93 - Джингл белл 3
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_GIFT_EMPTY', 3124); // 97 - Коробка для подарка  11
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_WREATH', 3125); // 50 - Новогодний венок 10 wreath
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_CANDLE', 3126); // 60 - Новогодние свечи 10
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_BALL', 3127); // 98 - Ёлочные шары 7
+define('UNIT_HIGHSPOT_GATHER_CHRISTMAS_SNOWFLAKE', 3128); // 99 - Снежинка 10
 
+// Шелдон: Леонард, в правилах этикета сказано, когда ваш друг расстроен, ему нужно предложить горячий напиток, например, чай.
+
+// 3200
 
 define('UNIT_NEXT', 4000); // !!! Next unit start on 4000 !!!
 
@@ -1435,6 +1482,11 @@ define('PLAYER_OPTION_NAVBAR_DISABLE_FLYING_FLEETS', 40);
 define('PLAYER_OPTION_NAVBAR_DISABLE_EXPEDITIONS', 41);
 define('PLAYER_OPTION_NAVBAR_RESEARCH_WIDE', 42);
 define('PLAYER_OPTION_NAVBAR_DISABLE_META_MATTER', 43);
+define('PLAYER_OPTION_NAVBAR_PLANET_VERTICAL', 44);
+define('PLAYER_OPTION_FLEET_SHIP_SELECT_OLD', 45);
+define('PLAYER_OPTION_FLEET_SHIP_HIDE_SPEED', 46);
+define('PLAYER_OPTION_FLEET_SHIP_HIDE_CAPACITY', 47);
+define('PLAYER_OPTION_FLEET_SHIP_HIDE_CONSUMPTION', 48);
 
 // -------------------
 define('PLAYER_OPTION_MENU_HIDE_SHOW_BUTTON_FIXED', 0);
@@ -1504,3 +1556,30 @@ define('SKIN_IMAGE_TAG_IMAGE_ID', 2);
  * Параметры тэга в массиве - отсортированные и переупорядоченные
  */
 define('SKIN_IMAGE_TAG_PARAMS', 3);
+
+define('DB_SELECT_PLAIN', false);
+define('DB_SELECT_FOR_UPDATE', true);
+
+/**
+ * Defining some constants
+ */
+define('CACHER_NOT_INIT', -1);
+define('CACHER_NO_CACHE',  0);
+define('CACHER_XCACHE'  ,  1);
+
+define('CACHER_LOCK_WAIT', 5); // maximum cacher wait for table unlock in seconds. Can be float
+
+// max timeout cacher can sleep in waiting for unlockDefault = 10000 ms = 0.01s
+// really it will sleep mt_rand(100, CACHER_LOCK_SLEEP)
+define('CACHER_LOCK_SLEEP', 10000);
+
+define('AUTH_LOGIN_EXTERNAL_NAME', 'auth_ext');
+define('AUTH_LOGIN_EXTERNAL_MODE', 'auth_mode');
+
+define('AUTH_VKONTAKTE', 'vkontakte');
+define('AUTH_VKONTAKTE_PARAM_STATE', 'state');
+define('AUTH_VKONTAKTE_PARAM_CODE', 'code');
+define('AUTH_VKONTAKTE_PARAM_ERROR', 'code');
+define('AUTH_VKONTAKTE_CODE_GET', 1);
+
+define('URL_PARAM_SEPARATOR', '*');

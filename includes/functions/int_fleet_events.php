@@ -1,60 +1,5 @@
 <?php
 
-/*
- * Get fleets by condition (including missiles)
- * $condition =
- *   false - get ALL fleets (for FlyingFleetsManagerV2); $phalanx ignored
- *   user ID - get all fleets from current owner
- *   array - (presumed planet row) get all fleets coming to selected planet
- */
-function flt_get_fleets($condition, $phalanx = false) {
-  $fleet_db_list = array();
-
-  if(!$condition)
-  {
-    $missile_query = $condition = 1;
-  }
-  elseif(is_array($condition))
-  {
-    $missile_query = "
-      (fleet_start_galaxy = {$condition['galaxy']} AND fleet_start_system = {$condition['system']} AND fleet_start_planet = {$condition['planet']} AND fleet_start_type = {$condition['planet_type']})
-      OR
-      (fleet_end_galaxy = {$condition['galaxy']} AND fleet_end_system = {$condition['system']} AND fleet_end_planet = {$condition['planet']} AND fleet_end_type = {$condition['planet_type']})";
-    $condition = "
-      (fleet_start_galaxy = {$condition['galaxy']} AND fleet_start_system = {$condition['system']} AND fleet_start_planet = {$condition['planet']} AND fleet_start_type = {$condition['planet_type']}" . ($phalanx ? '' : ' AND fleet_mess = 1') . ")
-      OR
-      (fleet_end_galaxy = {$condition['galaxy']} AND fleet_end_system = {$condition['system']} AND fleet_end_planet = {$condition['planet']} AND fleet_end_type = {$condition['planet_type']}" . ($phalanx ? '' : ' AND fleet_mess = 0') . ")";
-  }
-  else
-  {
-    $missile_query = "`fleet_owner` = '{$condition}' OR `fleet_target_owner` = '{$condition}'";
-    $condition = $missile_query;
-  }
-  $sql_fleets = doquery("SELECT DISTINCT * FROM {{fleets}} WHERE {$condition};");
-
-  while ($fleet = db_fetch($sql_fleets))
-  {
-    $fleet_db_list[] = $fleet;
-  }
-
-  // Missile attack
-  $sql_fleets = doquery("SELECT * FROM `{{iraks}}` WHERE {$missile_query};");
-  while ($irak = db_fetch($sql_fleets))
-  {
-    if($irak['fleet_end_time'] >= SN_TIME_NOW)
-    {
-      $irak['fleet_start_type'] = PT_PLANET;
-      $planet_start = db_planet_by_vector($irak, 'fleet_start_', false, 'name');
-      $irak['fleet_id']             = -$irak['id'];
-      $irak['fleet_mission']        = MT_MISSILE;
-      $irak['fleet_array']          = UNIT_DEF_MISSILE_INTERPLANET . ",{$irak['fleet_amount']};";
-      $irak['fleet_start_name']     = $planet_start['name'];
-    }
-    $fleet_db_list[] = $irak;
-  }
-
-  return $fleet_db_list;
-}
 
 function flt_parse_fleets_to_events($fleet_list, $planet_scanned = false)
 {
@@ -71,7 +16,7 @@ function flt_parse_fleets_to_events($fleet_list, $planet_scanned = false)
   foreach($fleet_list as $fleet)
   {
     $planet_start_type = $fleet['fleet_start_type'] == PT_MOON ? PT_MOON : PT_PLANET;
-    $planet_start = db_planet_by_gspt($fleet['fleet_start_galaxy'], $fleet['fleet_start_system'], $fleet['fleet_start_planet'], $planet_start_type, false, 'name');
+    $planet_start = DBStaticPlanet::db_planet_by_gspt($fleet['fleet_start_galaxy'], $fleet['fleet_start_system'], $fleet['fleet_start_planet'], $planet_start_type, false, 'name');
     $fleet['fleet_start_name'] = $planet_start['name'];
 
     $planet_end_type = $fleet['fleet_end_type'] == PT_MOON ? PT_MOON : PT_PLANET;
@@ -85,7 +30,7 @@ function flt_parse_fleets_to_events($fleet_list, $planet_scanned = false)
     }
     else
     {
-      $planet_end = db_planet_by_gspt($fleet['fleet_end_galaxy'], $fleet['fleet_end_system'], $fleet['fleet_end_planet'], $planet_end_type, false, 'name');
+      $planet_end = DBStaticPlanet::db_planet_by_gspt($fleet['fleet_end_galaxy'], $fleet['fleet_end_system'], $fleet['fleet_end_planet'], $planet_end_type, false, 'name');
       $fleet['fleet_end_name'] = $planet_end['name'];
     }
 

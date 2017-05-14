@@ -1,10 +1,10 @@
 <?php
 
+require_once('db_helpers.php');
+
 require_once('db_queries_account.php');
 require_once('db_queries_users.php');
-require_once('db_queries_planets.php');
-require_once('db_queries_unit.php');
-require_once('db_queries_que.php');
+require_once('db_queries_fleet.php');
 
 
 function db_planet_list_admin_list($table_parent_columns, $planet_active, $active_time, $planet_type)
@@ -101,14 +101,6 @@ function db_message_list_outbox_by_user_id($user_id)
 
 
 
-function db_ally_count()
-{
-  $result = doquery('SELECT COUNT(`id`) AS ally_count FROM {{alliance}}', true);
-  return isset($result['ally_count']) ? $result['ally_count'] : 0;
-}
-
-
-
 function db_unit_records_sum($unit_id, $user_skip_list_unit)
 {
   return doquery (
@@ -133,7 +125,6 @@ function db_unit_records_plain($unit_id, $user_skip_list_unit)
 }
 
 function db_stat_list_statistic($who, $is_common_stat, $Rank, $start, $source = false) {
-// pdump($source);
   if(!$source) {
     $source = array(
       'statpoints' => 'statpoints',
@@ -154,7 +145,7 @@ function db_stat_list_statistic($who, $is_common_stat, $Rank, $start, $source = 
       'alliance' => 'blitz_alliance', // TODO
     );
   }
-// pdump($source);
+
   if($who == 1) {
     if($is_common_stat) { // , UNIX_TIMESTAMP(CONCAT(YEAR(CURRENT_DATE), DATE_FORMAT(`user_birthday`, '-%m-%d'))) AS `nearest_birthday`
       $query_str =
@@ -239,51 +230,9 @@ function db_chat_player_list_online($chat_refresh_rate, $ally_add)
     ORDER BY authlevel DESC, `username`");
 }
 
-function db_flying_fleet_lock(&$mission_data, &$fleet_row)
-{
-//  // Тупо лочим всех юзеров, чьи флоты летят или улетают с координат отбытия/прибытия $fleet_row
-//  // Что бы делать это умно - надо учитывать fleet_mess во $fleet_row и в таблице {{fleets}}
-//  return doquery(
-//    "SELECT 1 FROM {{users}} as u
-//    JOIN {{fleets}} AS f ON u.id = f.fleet_owner OR u.id = f.fleet_target_owner " .
-//
-//    // Выбираем все флоты, чьи координаты совпадают координатами $fleet_row
-//    "WHERE (" .
-//      // Начальные координаты совпадают с начальными
-//      "(f.fleet_start_galaxy = {$fleet_row['fleet_start_galaxy']} AND f.fleet_start_system = {$fleet_row['fleet_start_system']} AND f.fleet_start_planet = {$fleet_row['fleet_start_planet']} AND f.fleet_start_type = {$fleet_row['fleet_start_type']}) OR " .
-//      // Конечные координаты совпадают с конечными
-//      "(f.fleet_end_galaxy = {$fleet_row['fleet_end_galaxy']} AND f.fleet_end_system = {$fleet_row['fleet_end_system']} AND f.fleet_end_planet = {$fleet_row['fleet_end_planet']} AND f.fleet_end_type = {$fleet_row['fleet_end_type']}) OR " .
-//      // Конечные координаты совпадают с начальными
-//      "(f.fleet_end_galaxy = {$fleet_row['fleet_start_galaxy']} AND f.fleet_end_system = {$fleet_row['fleet_start_system']} AND f.fleet_end_planet = {$fleet_row['fleet_start_planet']} AND f.fleet_end_type = {$fleet_row['fleet_start_type']}) OR " .
-//      // Начальные координаты совпадают с конечными
-//      "(f.fleet_start_galaxy = {$fleet_row['fleet_end_galaxy']} AND f.fleet_start_system = {$fleet_row['fleet_end_system']} AND f.fleet_start_planet = {$fleet_row['fleet_end_planet']} AND f.fleet_start_type = {$fleet_row['fleet_end_type']}) " .
-//    ") " .
-//    "GROUP BY 1 FOR UPDATE"
-//  );
-//
-  return doquery(
-    "SELECT 1 FROM {{fleets}} AS f " .
-    ($mission_data['dst_user'] || $mission_data['dst_planet'] ? "LEFT JOIN {{users}} AS ud ON ud.id = f.fleet_target_owner " : '') .
-    ($mission_data['dst_planet'] ? "LEFT JOIN {{planets}} AS pd ON pd.id = f.fleet_end_planet_id " : '') .
-
-    // Блокировка всех прилетающих и улетающих флотов, если нужно
-    ($mission_data['dst_fleets'] ? "LEFT JOIN {{fleets}} AS fd ON fd.fleet_end_planet_id = f.fleet_end_planet_id OR fd.fleet_start_planet_id = f.fleet_end_planet_id " : '') .
-
-    ($mission_data['src_user'] || $mission_data['src_planet'] ? "LEFT JOIN {{users}} AS us ON us.id = f.fleet_owner " : '') .
-    ($mission_data['src_planet'] ? "LEFT JOIN {{planets}} AS ps ON ps.id = f.fleet_start_planet_id " : '') .
-
-    "WHERE f.fleet_id = {$fleet_row['fleet_id']} GROUP BY 1 FOR UPDATE"
-  );
-}
-
 function db_referrals_list_by_id($user_id)
 {
   return doquery("SELECT r.*, u.username, u.register_time FROM {{referrals}} AS r LEFT JOIN {{users}} AS u ON u.id = r.id WHERE id_partner = {$user_id}");
-}
-
-function db_fleet_list_with_usernames()
-{
-  return doquery("SELECT f.*, u.username FROM `{{fleets}}` AS f LEFT JOIN {{users}} AS u ON u.id = f.fleet_target_owner ORDER BY `fleet_end_time` ASC;");
 }
 
 function db_message_list_admin_by_type($int_type_selected, $StartRec)
@@ -303,18 +252,6 @@ FROM
   `message_id` DESC
 LIMIT
   {$StartRec}, 25;");
-}
-
-
-function db_ally_list_recalc_counts()
-{
-  return doquery("UPDATE {{alliance}} as a LEFT JOIN (SELECT ally_id, count(*) as ally_memeber_count FROM {{users}}
-      WHERE ally_id IS NOT NULL GROUP BY ally_id) as u ON u.ally_id = a.id SET a.`ally_members` = u.ally_memeber_count;");
-}
-
-function db_ally_request_list($ally_id)
-{
-  return doquery("SELECT {{alliance_requests}}.*, {{users}}.username FROM {{alliance_requests}} LEFT JOIN {{users}} ON {{users}}.id = {{alliance_requests}}.id_user WHERE id_ally='{$ally_id}'");
 }
 
 
@@ -374,6 +311,6 @@ function db_player_name_exists($player_name_unsafe) {
  */
 // OK v4.7
 function db_player_get_max_id() {
-  $max_user_id = classSupernova::$db->doquery("SELECT MAX(`id`) as `max_user_id` FROM `{{user}}`", true);
+  $max_user_id = classSupernova::$db->doquery("SELECT MAX(`id`) as `max_user_id` FROM `{{users}}`", true);
   return !empty($max_user_id['max_user_id']) ? $max_user_id['max_user_id'] : 0;
 }

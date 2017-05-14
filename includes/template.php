@@ -215,12 +215,8 @@ function display($page, $title = '', $isDisplayTopNav = true, $metatags = '', $A
 function sn_display($page, $title = '', $isDisplayTopNav = true, $metatags = '', $isDisplayMenu = true, $exitStatus = true) {
   global $debug, $user, $planetrow, $config, $lang, $template_result, $sn_mvc, $sn_page_name;
 
-//  $isDisplayMenu = is_object($page) && isset($page->_rootref['MENU']) ? $page->_rootref['MENU'] : $isDisplayMenu;
-//  $topnav = is_object($page) && isset($page->_rootref['NAVBAR']) ? $page->_rootref['NAVBAR'] : $topnav;
-//  $title = $title ? $title : (is_object($page) && isset($page->_rootref['PAGE_HEADER']) ? $page->_rootref['PAGE_HEADER'] : '');
-//  if(is_object($page) && !isset($page->_rootref['PAGE_HEADER']) && $title) {
-//    $page->assign_var('PAGE_HEADER', $title);
-//  }
+  $in_admin = defined('IN_ADMIN') && IN_ADMIN === true;
+  $is_login = defined('LOGIN_LOGOUT') && LOGIN_LOGOUT === true;
 
   if(is_object($page)) {
     isset($page->_rootref['MENU']) ? $isDisplayMenu = $page->_rootref['MENU'] : false;
@@ -235,7 +231,7 @@ function sn_display($page, $title = '', $isDisplayTopNav = true, $metatags = '',
     $isDisplayTopNav = false;
   }
 
-  isset($sn_mvc['view']['']) and execute_hooks($sn_mvc['view'][''], $page);
+  !empty($sn_mvc['view']['']) and execute_hooks($sn_mvc['view'][''], $page, 'view', '');
 
   // Global header
   $user_time_diff = playerTimeDiff::user_time_diff_get();
@@ -253,17 +249,55 @@ function sn_display($page, $title = '', $isDisplayTopNav = true, $metatags = '',
     $font_size = FONT_SIZE_PERCENT_DEFAULT_STRING;
   }
 
+  $template_result['LOGIN_LOGOUT'] = $is_login;
+
   $template = gettemplate('_global_header', true);
 
   if(!empty($sn_mvc['javascript'])) {
     foreach($sn_mvc['javascript'] as $page_name => $script_list) {
       if(empty($page_name) || $page_name == $sn_page_name) {
         foreach($script_list as $filename => $content) {
-          $template->assign_block_vars('javascript', array(
+          $template_result['.']['javascript'][] = array(
             'FILE'    => $filename,
             'CONTENT' => $content,
-          ));
+          );
         }
+      }
+    }
+  }
+
+
+
+//    <!-- IF LOGIN_LOGOUT -->
+//    <link rel="stylesheet" type="text/css" href="{D_SN_ROOT_VIRTUAL}design/css/{GAME_MODE_CSS_PREFIX}login_background.min.css?{C_var_db_update}" />
+//    <!-- ELSE -->
+//    <link rel="stylesheet" type="text/css" href="{D_SN_ROOT_VIRTUAL}{dpath}{GAME_MODE_CSS_PREFIX}skin_background.min.css?{C_var_db_update}" />
+//    <!-- ENDIF -->
+//    <!--<link rel="stylesheet" type="text/css" href="{D_SN_ROOT_VIRTUAL}{dpath}skin_server.css?{C_var_db_update}" />-->
+//    <link rel="stylesheet" type="text/css" href="{D_SN_ROOT_VIRTUAL}design/css/global_override.css?{C_var_db_update}" />
+  empty($sn_mvc['css']) ? $sn_mvc['css'] = array('' => array()) : false;
+  $standard_css = array(
+    'design/css/jquery-ui.css' => '',
+    'design/css/global.min.css' => '',
+  );
+  $is_login ? $standard_css['design/css/login.min.css'] = '': false;
+  $standard_css += array(
+//    'design/css/design/css/global-ie.min.css' => '', // TODO
+    TEMPLATE_PATH . '/_template.min.css' => '',
+    ($user['dpath'] ? $user['dpath'] : DEFAULT_SKINPATH) . 'skin.min.css' => '',
+  );
+
+  // Prepending standard CSS files
+  $sn_mvc['css'][''] = array_merge($standard_css, $sn_mvc['css']['']);
+
+
+  foreach($sn_mvc['css'] as $page_name => $script_list) {
+    if(empty($page_name) || $page_name == $sn_page_name) {
+      foreach($script_list as $filename => $content) {
+        $template_result['.']['css'][] = array(
+          'FILE'    => $filename,
+          'CONTENT' => $content,
+        );
       }
     }
   }
@@ -275,7 +309,7 @@ function sn_display($page, $title = '', $isDisplayTopNav = true, $metatags = '',
     'FONT_SIZE_PERCENT_DEFAULT_STRING' => FONT_SIZE_PERCENT_DEFAULT_STRING,
 
     'SN_TIME_NOW'          => SN_TIME_NOW,
-    'LOGIN_LOGOUT'         => defined('LOGIN_LOGOUT') && LOGIN_LOGOUT === true,
+    'LOGIN_LOGOUT'         => $is_login,
     'GAME_MODE_CSS_PREFIX' => $config->game_mode == GAME_BLITZ ? 'blitz_' : '',
     //'TIME_DIFF'                => SN_CLIENT_TIME_DIFF,
     'TIME_DIFF_MEASURE'    => intval(
@@ -306,12 +340,12 @@ function sn_display($page, $title = '', $isDisplayTopNav = true, $metatags = '',
   $template->assign_recursive($template_result);
   displayP(parsetemplate($template));
 
-  if($isDisplayMenu && !isset($_COOKIE['menu_disable'])) {
+  if(($isDisplayMenu || $in_admin) && !isset($_COOKIE['menu_disable'])) {
     // $AdminPage = $AdminPage ? $user['authlevel'] : 0;
     displayP(parsetemplate(tpl_render_menu()));
   }
 
-  if($isDisplayTopNav) {
+  if($isDisplayTopNav && !$in_admin) {
     displayP(parsetemplate(tpl_render_topnav($user, $planetrow)));
   }
 
@@ -436,15 +470,17 @@ function tpl_render_topnav(&$user, $planetrow) { return sn_function_call('tpl_re
  * @return string|template
  */
 function sn_tpl_render_topnav(&$user, $planetrow) {
+  global $lang, $config, $sn_module_list, $template_result, $sn_mvc;
+
   if(!is_array($user)) {
     return '';
   }
 
-  global $lang, $config, $sn_module_list;
-
   $GET_mode = sys_get_param_str('mode');
 
-  $template = gettemplate('topnav', true);
+  $template = gettemplate('navbar', true);
+
+  $template->assign_recursive($template_result);
 
   /*
   $planetrow = $planetrow ? $planetrow : $user['current_planet'];
@@ -455,7 +491,7 @@ function sn_tpl_render_topnav(&$user, $planetrow) {
   $planetrow = $planetrow['planet'];
   */
 
-  $ThisUsersPlanets = db_planet_list_sorted($user);
+  $ThisUsersPlanets = DBStaticPlanet::db_planet_list_sorted($user);
   // while ($CurPlanet = db_fetch($ThisUsersPlanets))
   foreach($ThisUsersPlanets as $CurPlanet) {
     if($CurPlanet['destruyed']) {
@@ -483,6 +519,17 @@ function sn_tpl_render_topnav(&$user, $planetrow) {
   que_tpl_parse($template, QUE_STRUCTURES, $user, $planetrow, null, true);
   que_tpl_parse($template, QUE_RESEARCH, $user, array(), null, !classSupernova::$user_options[PLAYER_OPTION_NAVBAR_RESEARCH_WIDE]);
   que_tpl_parse($template, SUBQUE_FLEET, $user, $planetrow, null, true);
+
+  if(!empty($sn_mvc['navbar_prefix_button']) && is_array($sn_mvc['navbar_prefix_button'])) {
+    foreach($sn_mvc['navbar_prefix_button'] as $navbar_button_image => $navbar_button_url) {
+      $template->assign_block_vars('navbar_prefix_button', array(
+        'IMAGE' => $navbar_button_image,
+        'URL_RELATIVE' => $navbar_button_url,
+      ));
+    }
+  }
+
+  $template->assign_var('NAVBAR_PREFIX_BUTTONS', is_array($sn_mvc['navbar_prefix_button']) ? count($sn_mvc['navbar_prefix_button']) : 0);
 
   $str_date_format = "%3$02d %2$0s %1$04d {$lang['top_of_year']} %4$02d:%5$02d:%6$02d";
   $time_now_parsed = getdate(SN_TIME_NOW);
@@ -567,6 +614,7 @@ function sn_tpl_render_topnav(&$user, $planetrow) {
     'GAME_STRUCTURES_DISABLED' => defined('GAME_STRUCTURES_DISABLED') && GAME_STRUCTURES_DISABLED,
     'GAME_HANGAR_DISABLED'     => defined('GAME_HANGAR_DISABLED') && GAME_HANGAR_DISABLED,
 
+    'PLAYER_OPTION_NAVBAR_PLANET_VERTICAL'       => classSupernova::$user_options[PLAYER_OPTION_NAVBAR_PLANET_VERTICAL],
     'PLAYER_OPTION_NAVBAR_DISABLE_RESEARCH'      => classSupernova::$user_options[PLAYER_OPTION_NAVBAR_DISABLE_RESEARCH],
     'PLAYER_OPTION_NAVBAR_DISABLE_PLANET'        => classSupernova::$user_options[PLAYER_OPTION_NAVBAR_DISABLE_PLANET],
     'PLAYER_OPTION_NAVBAR_DISABLE_HANGAR'        => classSupernova::$user_options[PLAYER_OPTION_NAVBAR_DISABLE_HANGAR],
@@ -628,6 +676,7 @@ function parsetemplate($template, $array = false) {
     $template->assign_vars(array(
       'dpath'          => $user['dpath'] ? $user['dpath'] : DEFAULT_SKINPATH,
       'SN_TIME_NOW'    => SN_TIME_NOW,
+      'CURRENT_YEAR'   => date('Y', SN_TIME_NOW),
       'USER_AUTHLEVEL' => isset($user['authlevel']) ? $user['authlevel'] : -1,
       'SN_GOOGLE'      => defined('SN_GOOGLE'),
     ));
@@ -731,10 +780,15 @@ function tpl_login_lang(&$template) {
 function tpl_get_fleets_flying(&$user) {
   $fleet_flying_list = array();
 
-  $fleet_flying_query = doquery("SELECT * FROM {{fleets}} WHERE fleet_owner = {$user['id']}");
-  while($fleet_flying_row = db_fetch($fleet_flying_query)) {
-    $fleet_flying_list[0][] = $fleet_flying_row;
-    $fleet_flying_list[$fleet_flying_row['fleet_mission']][] = &$fleet_flying_list[0][count($fleet_flying_list) - 1];
+//  $fleet_flying_query = doquery("SELECT * FROM {{fleets}} WHERE fleet_owner = {$user['id']}");
+//  while($fleet_flying_row = db_fetch($fleet_flying_query)) {
+//    $fleet_flying_list[0][] = $fleet_flying_row;
+//    $fleet_flying_list[$fleet_flying_row['fleet_mission']][] = &$fleet_flying_list[0][count($fleet_flying_list) - 1];
+//  }
+
+  $fleet_flying_list[0] = fleet_list_by_owner_id($user['id']);
+  foreach($fleet_flying_list[0] as $fleet_id => $fleet_flying_row) {
+    $fleet_flying_list[$fleet_flying_row['fleet_mission']][$fleet_id] = &$fleet_flying_list[0][$fleet_id];
   }
 
   return $fleet_flying_list;

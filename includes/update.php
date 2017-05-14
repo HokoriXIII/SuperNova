@@ -30,7 +30,7 @@ define('IN_UPDATE', true);
 
 require('includes/upd_helpers.php');
 
-global $sn_cache, $new_version, $config, $debug, $sys_log_disabled, $upd_log, $update_tables, $update_indexes, $update_foreigns;
+global $sn_cache, $new_version, $config, $debug, $sys_log_disabled, $upd_log, $update_tables, $update_indexes, $update_indexes_full, $update_foreigns;
 
 $config->reset();
 $config->db_loadAll();
@@ -50,12 +50,13 @@ if($config->db_version == DB_VERSION) {
   );
 }
 
-if($config->db_version < 26) {
-  $sys_log_disabled = true;
-}
-
 $upd_log = '';
 $new_version = floatval($config->db_version);
+if($new_version < 37) {
+  die('This version does not supports upgrades from SN below v37. Please, use SN v40 to upgrade old database.<br />
+Эта версия игры не поддерживает обновление движка версий ниже 37й. Пожалуйста, используйте SN v40 для апгрейда со старых версий игры.');
+}
+
 upd_check_key('upd_lock_time', 300, !isset($config->upd_lock_time));
 
 set_time_limit($config->upd_lock_time + 10);
@@ -76,9 +77,6 @@ upd_log_message('Table info loaded. Now looking DB for upgrades...');
 
 upd_do_query('SET FOREIGN_KEY_CHECKS=0;', true);
 
-if($new_version < 37) {
-  require_once('update_old.php');
-}
 
 ini_set('memory_limit', '1024M');
 
@@ -1188,9 +1186,134 @@ switch($new_version) {
 
   case 40:
     upd_log_version_update();
-    upd_do_query('COMMIT;', true);
-//    $new_version = 41;
 
+    if(empty($update_tables['festival'])) {
+      upd_create_table('festival', " (
+          `id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+          `start` datetime NOT NULL COMMENT 'Festival start datetime',
+          `finish` datetime NOT NULL COMMENT 'Festival end datetime',
+          `name` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '' COMMENT 'Название акции/ивента',
+          PRIMARY KEY (`id`),
+          KEY `I_festival_date_range` (`start`,`finish`,`id`) USING BTREE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;"
+      );
+
+      upd_create_table('festival_highspot', " (
+          `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+          `festival_id` smallint(5) unsigned DEFAULT NULL,
+          `class` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT 'Highspot class',
+          `start` datetime NOT NULL COMMENT 'Highspot start datetime',
+          `finish` datetime NOT NULL COMMENT 'Highspot end datetime',
+          `name` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
+          PRIMARY KEY (`id`),
+          KEY `I_highspot_order` (`start`,`finish`,`id`),
+          KEY `I_highspot_festival_id` (`festival_id`,`start`,`finish`,`id`) USING BTREE,
+          CONSTRAINT `FK_highspot_festival_id` FOREIGN KEY (`festival_id`) REFERENCES `{{festival}}` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;"
+      );
+
+      upd_create_table('festival_highspot_activity', " (
+          `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+          `highspot_id` int(10) unsigned DEFAULT NULL,
+          `class` smallint(5) unsigned NOT NULL DEFAULT '0' COMMENT 'Класс события - ID модуля события',
+          `type` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT 'Тип активити: 1 - триггер, 2 - хук',
+          `start` datetime NOT NULL COMMENT 'Запланированное время запуска',
+          `finish` datetime DEFAULT NULL COMMENT 'Реальное время запуска',
+          `params` text COLLATE utf8_unicode_ci NOT NULL COMMENT 'Параметры активити в виде сериализованного архива',
+          PRIMARY KEY (`id`),
+          KEY `I_festival_activity_order` (`start`,`finish`,`id`) USING BTREE,
+          KEY `I_festival_activity_highspot_id` (`highspot_id`,`start`,`finish`,`id`) USING BTREE,
+          CONSTRAINT `FK_festival_activity_highspot_id` FOREIGN KEY (`highspot_id`) REFERENCES `{{festival_highspot}}` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;"
+      );
+    }
+
+    if(empty($update_tables['festival_unit'])) {
+      upd_create_table('festival_unit', " (
+          `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+          `highspot_id` int(10) unsigned DEFAULT NULL,
+          `player_id` bigint(20) unsigned DEFAULT NULL,
+          `unit_id` bigint(20) NOT NULL DEFAULT '0',
+          `unit_level` bigint(20) unsigned NOT NULL DEFAULT '0',
+          PRIMARY KEY (`id`),
+          KEY `I_festival_unit_player_id` (`player_id`,`highspot_id`) USING BTREE,
+          KEY `I_festival_unit_highspot_id` (`highspot_id`,`unit_id`,`player_id`) USING BTREE,
+          CONSTRAINT `FK_festival_unit_hispot` FOREIGN KEY (`highspot_id`) REFERENCES `{{festival_highspot}}` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+          CONSTRAINT `FK_festival_unit_player` FOREIGN KEY (`player_id`) REFERENCES `{{users}}` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;"
+      );
+    }
+
+    // 2015-12-21 06:06:09 41a0.12
+    if(empty($update_tables['festival_unit_log'])) {
+      upd_create_table('festival_unit_log', " (
+          `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+          `highspot_id` int(10) unsigned DEFAULT NULL,
+          `player_id` bigint(20) unsigned NOT NULL COMMENT 'User ID',
+          `player_name` varchar(32) NOT NULL DEFAULT '',
+          `unit_id` bigint(20) unsigned NOT NULL DEFAULT '0',
+          `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          `unit_level` int(11) NOT NULL DEFAULT '0',
+          PRIMARY KEY (`id`),
+          KEY `I_festival_unit_log_player_id` (`player_id`,`highspot_id`,`id`) USING BTREE,
+          KEY `I_festival_unit_log_highspot_id` (`highspot_id`,`unit_id`,`player_id`) USING BTREE,
+          CONSTRAINT `FK_festival_unit_log_hispot` FOREIGN KEY (`highspot_id`) REFERENCES `{{festival_highspot}}` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+          CONSTRAINT `FK_festival_unit_log_player` FOREIGN KEY (`player_id`) REFERENCES `{{users}}` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
+      );
+    }
+
+    // 2015-12-22 00:00:32 41a0.17
+    upd_alter_table('festival_unit_log', "ADD COLUMN `unit_image` varchar(255) NOT NULL DEFAULT ''", empty($update_tables['festival_unit_log']['unit_image']));
+
+    // 2016-01-15 10:57:17 41a1.4
+    upd_alter_table(
+      'security_browser',
+      "MODIFY COLUMN `browser_user_agent` VARCHAR(250) CHARSET utf8 COLLATE utf8_unicode_ci NOT NULL DEFAULT ''",
+      $update_tables['security_browser']['browser_user_agent']['Collation'] == 'latin1_bin'
+    );
+
+    if($update_indexes_full['security_browser']['I_browser_user_agent']['browser_user_agent']['Index_type'] == 'BTREE') {
+      upd_alter_table('security_browser', "DROP KEY `I_browser_user_agent`", true);
+      upd_alter_table('security_browser', "ADD KEY `I_browser_user_agent` (`browser_user_agent`) USING HASH", true);
+    }
+
+    // 2016-12-03 20:36:46 41a61.0
+    if(empty($update_tables['auth_vkontakte_account'])) {
+      upd_create_table('auth_vkontakte_account', " (
+          `user_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+          `access_token` varchar(250) NOT NULL DEFAULT '',
+          `expires_in` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          `email` varchar(250) NOT NULL DEFAULT '',
+
+          `first_name` varchar(250) NOT NULL DEFAULT '',
+          `last_name` varchar(250) NOT NULL DEFAULT '',
+
+          `account_id` bigint(20) unsigned NULL COMMENT 'Account ID',
+
+          PRIMARY KEY (`user_id`),
+          CONSTRAINT `FK_vkontakte_account_id` FOREIGN KEY (`account_id`) REFERENCES `{{account}}` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8;"
+      );
+    }
+//    upd_alter_table('auth_vkontakte_account',
+//      "
+//          ADD COLUMN `account_id` bigint(20) unsigned NULL COMMENT 'Account ID',
+//          ADD CONSTRAINT `FK_vkontakte_account_id` FOREIGN KEY (`account_id`) REFERENCES `{{account}}` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE
+//      ",
+//      empty($update_tables['auth_vkontakte_account']['account_id']));
+
+
+    upd_do_query('COMMIT;', true);
+    // 2017-02-03 16:10:49 41b1
+    $new_version = 41;
+
+  case 41:
+    upd_log_version_update();
+    // #ctv
+
+    upd_do_query('COMMIT;', true);
+    // $new_version = 42;
 }
 upd_log_message('Upgrade complete.');
 

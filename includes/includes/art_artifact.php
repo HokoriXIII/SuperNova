@@ -22,7 +22,7 @@ function art_use(&$user, &$planetrow, $unit_id)
       case ART_HOOK_SMALL:
       case ART_HOOK_MEDIUM:
       case ART_HOOK_LARGE:
-        $has_moon = db_planet_by_parent($planetrow['id'], true, '`id`');
+        $has_moon = DBStaticPlanet::db_planet_by_parent($planetrow['id'], true, '`id`');
         if($planetrow['planet_type'] == PT_PLANET && !$has_moon['id'])
         {
           $unit_level--;
@@ -50,7 +50,7 @@ function art_use(&$user, &$planetrow, $unit_id)
       case ART_RCD_SMALL:
       case ART_RCD_MEDIUM:
       case ART_RCD_LARGE:
-        $planetrow = db_planet_by_id($planetrow['id'], true);
+        $planetrow = DBStaticPlanet::db_planet_by_id($planetrow['id'], true);
         if($planetrow['planet_type'] != PT_PLANET)
         {
           $message = $lang['art_rcd_err_moon'];
@@ -84,7 +84,7 @@ function art_use(&$user, &$planetrow, $unit_id)
           break;
         }
         $unit_level--;
-        db_planet_set_by_id($planetrow['id'], "`field_current` = `field_current` + {$sectors_used}");
+        DBStaticPlanet::db_planet_set_by_id($planetrow['id'], "`field_current` = `field_current` + {$sectors_used}");
         $message = sprintf($lang['art_rcd_ok'], $lang['tech'][$unit_id], $planetrow['name'], uni_render_coordinates($planetrow));
         msg_send_simple_message($user['id'], 0, 0, MSG_TYPE_QUE, $lang['art_rcd_subj'], $lang['art_rcd_subj'], $message);
       break;
@@ -104,7 +104,7 @@ function art_use(&$user, &$planetrow, $unit_id)
           $unit_level--;
           $old_time = $que_item['que_time_left'];
           $que_item['que_time_left'] = $que_item['que_time_left'] > PERIOD_HOUR ? ceil($que_item['que_time_left'] / 2) : 0;
-          db_que_set_time_left_by_id($que_item['que_id'], $que_item['que_time_left']);
+          DBStaticQue::db_que_set_time_left_by_id($que_item['que_id'], $que_item['que_time_left']);
           $message = sprintf($lang['art_heurestic_chip_ok'], $lang['tech'][$que_item['que_unit_id']], $que_item['que_unit_level'], sys_time_human($old_time - $que_item['que_time_left']));
           msg_send_simple_message($user['id'], 0, 0, MSG_TYPE_QUE, $lang['art_heurestic_chip_subj'], $lang['art_heurestic_chip_subj'], $message);
         }
@@ -115,7 +115,7 @@ function art_use(&$user, &$planetrow, $unit_id)
       break;
 
       case ART_NANO_BUILDER:
-        $planetrow = db_planet_by_id($planetrow['id'], true);
+        $planetrow = DBStaticPlanet::db_planet_by_id($planetrow['id'], true);
         $que_item = null;
         $que = que_get($user['id'], $planetrow['id'], QUE_STRUCTURES, true);
         $current_que = &$que['ques'][QUE_STRUCTURES][$user['id']][$planetrow['id']];
@@ -131,7 +131,7 @@ function art_use(&$user, &$planetrow, $unit_id)
           $unit_level--;
           $old_time = $que_item['que_time_left'];
           $que_item['que_time_left'] = $que_item['que_time_left'] > PERIOD_HOUR ? ceil($que_item['que_time_left'] / 2) : 0;
-          db_que_set_time_left_by_id($que_item['que_id'], $que_item['que_time_left']);
+          DBStaticQue::db_que_set_time_left_by_id($que_item['que_id'], $que_item['que_time_left']);
           $message = sprintf($lang['art_nano_builder_ok'], $que_item['que_unit_mode'] == BUILD_CREATE ? $lang['art_nano_builder_build'] : $lang['art_nano_builder_destroy'],
             $lang['tech'][$que_item['que_unit_id']], $que_item['que_unit_level'], $planetrow['name'], uni_render_coordinates($planetrow), sys_time_human($old_time - $que_item['que_time_left'])
           );

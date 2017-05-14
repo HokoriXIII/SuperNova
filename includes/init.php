@@ -5,15 +5,18 @@ if(defined('INIT')) {
   return;
 }
 
-// define('SN_DEBUG_LOG', true);
+define('INIT', true);
 
 // Замеряем начальные параметры
 define('SN_TIME_MICRO', microtime(true));
 define('SN_MEM_START', memory_get_usage());
 
-define('SN_DEBUG_PDUMP_CALLER', false);
-
 version_compare(PHP_VERSION, '5.3.2') < 0 ? die('FATAL ERROR: SuperNova REQUIRE PHP version > 5.3.2') : false;
+
+//define('DEBUG_UBE', true);
+//define('DEBUG_FLYING_FLEETS', true);
+//define('SN_DEBUG_LOG', true);
+//define('SN_DEBUG_PDUMP_CALLER', true);
 
 // Бенчмарк
 register_shutdown_function(function() {
@@ -21,9 +24,7 @@ register_shutdown_function(function() {
     return;
   }
 
-  global $user;
-
-  global $locale_cache_statistic;
+  global $user, $locale_cache_statistic;
 
   print('<hr><div class="benchmark">Benchmark ' . (microtime(true) - SN_TIME_MICRO) . 's, memory: ' . number_format(memory_get_usage() - SN_MEM_START) .
     (!empty($locale_cache_statistic['misses']) ? ', LOCALE MISSED' : '') .
@@ -40,12 +41,11 @@ register_shutdown_function(function() {
   }
 });
 
-define('INIT', true);
 !defined('INSIDE') ? define('INSIDE', true) : false;
 !defined('INSTALL') ? define('INSTALL', false) : false;
 !defined('IN_PHPBB') ? define('IN_PHPBB', true) : false;
 
-global $phpEx, $sn_root_physical, $phpbb_root_path; // Это нужно для работы PTL
+global $phpEx, $phpbb_root_path; // Это нужно для работы PTL
 define('SN_TIME_NOW', intval(SN_TIME_MICRO));
 define('SN_TIME_ZONE_OFFSET', date('Z'));
 
@@ -59,84 +59,49 @@ if(strpos(strtolower($_SERVER['SERVER_NAME']), 'google.') !== false) {
 }
 
 // Эти три строки должны быть В ЭТОМ ФАЙЛЕ, ПО ЭТОМУ ПУТИ и ПЕРЕД ЭТИМ ИНКЛЮДОМ!!!
-$sn_root_physical = str_replace('\\', '/', __FILE__);
-$sn_root_physical = str_replace('includes/init.php', '', $sn_root_physical);
-define('SN_ROOT_PHYSICAL', $sn_root_physical);
-// define('SN_ROOT_PHYSICAL_STR_LEN', mb_strlen($sn_root_physical));
-define('SN_ROOT_PHYSICAL_STR_LEN', strlen($sn_root_physical));
+define('SN_ROOT_PHYSICAL', str_replace('\\', '/', realpath(dirname(__DIR__))) . '/');
+define('SN_ROOT_PHYSICAL_STR_LEN', strlen(SN_ROOT_PHYSICAL));
 $phpbb_root_path = SN_ROOT_PHYSICAL; // Это нужно для работы PTL
 
-$sn_root_relative = str_replace('\\', '/', getcwd());
-$sn_root_relative .= $sn_root_relative[strlen($sn_root_relative) - 1] == '/' ? '' : '/';
+empty($classRoot) ? $classRoot = SN_ROOT_PHYSICAL . 'classes/' : false;
+spl_autoload_register(function ($class) use ($classRoot) {
+  $class = str_replace('\\', '/', $class);
+  if (file_exists($classRoot . $class . '.php')) {
+    require_once $classRoot . $class . '.php';
+  } elseif (file_exists($classRoot . 'UBE/' . $class . '.php')) {
+    require_once $classRoot . 'UBE/' . $class . '.php';
+  }
+});
+
+$sn_root_relative = str_replace(array('\\', '//'), '/', getcwd() . '/');
 $sn_root_relative = str_replace(SN_ROOT_PHYSICAL, '', $sn_root_relative);
 $sn_root_relative .= basename($_SERVER['SCRIPT_NAME']);
 $sn_root_relative = str_replace($sn_root_relative, '', $_SERVER['SCRIPT_NAME']);
 define('SN_ROOT_RELATIVE', $sn_root_relative);
 
-define('SN_ROOT_VIRTUAL' , 'http' . (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on' ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . SN_ROOT_RELATIVE);
-define('SN_ROOT_VIRTUAL_PARENT' , str_replace('//google.', '//', SN_ROOT_VIRTUAL));
+define('SN_ROOT_VIRTUAL', 'http' . (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on' ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . SN_ROOT_RELATIVE);
+define('SN_ROOT_VIRTUAL_PARENT', str_replace('//google.', '//', SN_ROOT_VIRTUAL));
 
 $phpEx = strpos($phpEx = substr(strrchr(__FILE__, '.'), 1), '/') === false ? $phpEx : '';
 define('PHP_EX', $phpEx); // PHP extension on this server
 define('DOT_PHP_EX', '.' . PHP_EX); // PHP extension on this server
 
-
-require_once('constants.php');
-
-require_once('classes/supernova.php');
-
-classSupernova::init_0_prepare();
-//classSupernova::init_1_constants();
-classSupernova::init_3_load_config_file();
-
 header('Content-type: text/html; charset=utf-8');
 ob_start();
 ini_set('error_reporting', E_ALL ^ E_NOTICE);
 
-
-// TODO - Разобраться с порядком подключени и зависимостями объектов
-require_once('classes/core_classes.php');
-
-// required for db.php
-// Initializing global 'debug' object
-require_once(SN_ROOT_PHYSICAL . "includes/debug.class" . DOT_PHP_EX);
-global $debug;
-$debug = new debug();
-classSupernova::debug_set_handler($debug);
-
-require_once(SN_ROOT_PHYSICAL . "includes/db" . DOT_PHP_EX);
-require_once('classes/db_mysql_v4.php');
-require_once('classes/db_mysql_v5.php');
-require_once('classes/db_mysql.php');
-classSupernova::init_main_db(new db_mysql());
-
-
-require_once('classes/cache.php');
-require_once('classes/locale.php');
-require_once('classes/template.php');
-require_once('classes/functions_template.php');
-require_once('classes/skin.php');
-require_once('classes/module.php');
-
-require_once('classes/playerTimeDiff.php');
-
-require_once('classes/RequestInfo.php');
-require_once('classes/PlayerToAccountTranslate.php');
-require_once('classes/Confirmation.php');
-require_once('classes/Account.php');
-require_once('classes/core_auth.php');
-// require_once('auth_provider.php');
-require_once('classes/auth_abstract.php');
-require_once('classes/auth_local.php');
-require_once('classes/sn_module_payment.php');
-require_once('classes/user_options.php');
-require_once(SN_ROOT_PHYSICAL . "includes/init/init_functions" . DOT_PHP_EX);
+require_once 'constants.php';
+require_once SN_ROOT_PHYSICAL . "includes/db" . DOT_PHP_EX;
+require_once SN_ROOT_PHYSICAL . "includes/init/init_functions" . DOT_PHP_EX;
 
 /**
  * @var classConfig $config
- * @var classSupernova $supernova
+ * @var debug $debug
  */
-global $supernova, $sn_cache, $config, $auth;
+global $sn_cache, $config, $auth, $debug;
+
+classSupernova::init_0_prepare();
+classSupernova::init_3_load_config_file();
 
 classSupernova::init_global_objects();
 
@@ -147,27 +112,27 @@ classSupernova::init_debug_state();
 require_once(SN_ROOT_PHYSICAL . "includes/vars" . DOT_PHP_EX);
 require_once(SN_ROOT_PHYSICAL . "includes/general" . DOT_PHP_EX);
 
-init_update($config);
+init_update(classSupernova::$config);
 
 // Initializing constants
 $sn_page_name_original = isset($_GET['page'])
   ? trim(strip_tags($_GET['page']))
   : str_replace(DOT_PHP_EX, '', str_replace(SN_ROOT_RELATIVE, '', str_replace('\\', '/', $_SERVER['SCRIPT_NAME'])));
 define('INITIAL_PAGE', $sn_page_name_original);
-define('SN_COOKIE'        , ($config->COOKIE_NAME ? $config->COOKIE_NAME : 'SuperNova') . (defined('SN_GOOGLE') ? '_G' : ''));
+define('SN_COOKIE'        , (classSupernova::$config->COOKIE_NAME ? classSupernova::$config->COOKIE_NAME : 'SuperNova') . (defined('SN_GOOGLE') ? '_G' : ''));
 define('SN_COOKIE_I'      , SN_COOKIE . AUTH_COOKIE_IMPERSONATE_SUFFIX);
 define('SN_COOKIE_D'      , SN_COOKIE . '_D');
 define('SN_COOKIE_T'      , SN_COOKIE . '_T'); // Time measure cookie
 define('SN_COOKIE_F'      , SN_COOKIE . '_F'); // Font size cookie
 define('SN_COOKIE_U'      , SN_COOKIE . '_U'); // Current user cookie aka user ID
 define('SN_COOKIE_U_I'    , SN_COOKIE_U . AUTH_COOKIE_IMPERSONATE_SUFFIX); // Current impersonator user cookie aka impersonator user ID
-define('TEMPLATE_NAME'    , $config->game_default_template ? $config->game_default_template : 'OpenGame');
+define('TEMPLATE_NAME'    , classSupernova::$config->game_default_template ? classSupernova::$config->game_default_template : 'OpenGame');
 define('TEMPLATE_PATH'    , 'design/templates/' . TEMPLATE_NAME);
 define('TEMPLATE_DIR'     , SN_ROOT_PHYSICAL . TEMPLATE_PATH);
-define('DEFAULT_SKINPATH' , $config->game_default_skin ? $config->game_default_skin : 'skins/EpicBlue/');
-define('DEFAULT_LANG'     , $config->game_default_language ? $config->game_default_language : 'ru');
-define('FMT_DATE'         , $config->int_format_date ? $config->int_format_date : 'd.m.Y');
-define('FMT_TIME'         , $config->int_format_time ? $config->int_format_time : 'H:i:s');
+define('DEFAULT_SKINPATH' , classSupernova::$config->game_default_skin ? classSupernova::$config->game_default_skin : 'skins/EpicBlue/');
+define('DEFAULT_LANG'     , classSupernova::$config->game_default_language ? classSupernova::$config->game_default_language : 'ru');
+define('FMT_DATE'         , classSupernova::$config->int_format_date ? classSupernova::$config->int_format_date : 'd.m.Y');
+define('FMT_TIME'         , classSupernova::$config->int_format_time ? classSupernova::$config->int_format_time : 'H:i:s');
 define('FMT_DATE_TIME'    , FMT_DATE . ' ' . FMT_TIME);
 
 $HTTP_ACCEPT_LANGUAGE = DEFAULT_LANG;
@@ -193,9 +158,6 @@ classSupernova::$auth = new core_auth();
 
 sn_sys_load_php_files(SN_ROOT_PHYSICAL . "modules/", PHP_EX, true);
 // Здесь - потому что core_auth модуль лежит в другом каталоге и его нужно инициализировать отдельно
-// TODO - переработать этот костыль
-// new auth_local();
-// pdump($sn_module);
 
 // Подключаем дефолтную страницу
 // По нормальным делам её надо подключать в порядке загрузки обработчиков
@@ -206,7 +168,7 @@ $sn_page_name_file = 'includes/pages/' . $sn_page_data['filename'] . DOT_PHP_EX;
 if($sn_page_name && isset($sn_page_data) && file_exists($sn_page_name_file)) {
   require_once($sn_page_name_file);
   if(is_array($sn_page_data['options'])) {
-    $supernova->options = array_merge($supernova->options, $sn_page_data['options']);
+    classSupernova::$options = array_merge(classSupernova::$options, $sn_page_data['options']);
   }
 //  $sn_page_data
 /*
@@ -235,8 +197,6 @@ foreach($sn_module as $loaded_module_name => $module_data) {
     }
   }
 }
-
-// pdump($load_order, '$load_order');
 
 // Создаем последовательность инициализации модулей
 // По нормальным делам надо сначала читать их конфиги - вдруг какой-то модуль отключен?
@@ -291,51 +251,38 @@ if(!isset($sn_data['pages'][$sn_page_name])) {
 
 
 
-//pdump(array_keys($sn_module_list));
-//pdump(array_keys($sn_module_list['core']));
-//pdump(array_keys($sn_module_list['auth']));
-//die();
-
-
 // classSupernova::$db->sn_db_connect(); // Не нужно. Делаем раньше
 
 global $lang;
-$lang = new classLocale($config->server_locale_log_usage);
+$lang = new classLocale(classSupernova::$config->server_locale_log_usage);
 $lang->lng_switch(sys_get_param_str('lang'));
 
 
-if($config->server_updater_check_auto && $config->server_updater_check_last + $config->server_updater_check_period <= SN_TIME_NOW) {
+if(classSupernova::$config->server_updater_check_auto && classSupernova::$config->server_updater_check_last + classSupernova::$config->server_updater_check_period <= SN_TIME_NOW) {
   include(SN_ROOT_PHYSICAL . 'ajax_version_check' . DOT_PHP_EX);
 }
 
-if($config->user_birthday_gift && SN_TIME_NOW - $config->user_birthday_celebrate > PERIOD_DAY) {
+if(classSupernova::$config->user_birthday_gift && SN_TIME_NOW - classSupernova::$config->user_birthday_celebrate > PERIOD_DAY) {
   require_once(SN_ROOT_PHYSICAL . "includes/includes/user_birthday_celebrate" . DOT_PHP_EX);
   sn_user_birthday_celebrate();
 }
 
-if(!$config->var_online_user_count || $config->var_online_user_time + 30 < SN_TIME_NOW) {
-  $config->db_saveItem('var_online_user_count', db_user_count(true));
-  $config->db_saveItem('var_online_user_time', SN_TIME_NOW);
-  if($config->server_log_online) {
-    doquery("INSERT IGNORE INTO {{log_users_online}} SET online_count = {$config->var_online_user_count};");
+if(!classSupernova::$config->var_online_user_count || classSupernova::$config->var_online_user_time + 30 < SN_TIME_NOW) {
+  classSupernova::$config->db_saveItem('var_online_user_count', db_user_count(true));
+  classSupernova::$config->db_saveItem('var_online_user_time', SN_TIME_NOW);
+  if(classSupernova::$config->server_log_online) {
+    doquery("INSERT IGNORE INTO {{log_users_online}} SET online_count = " . classSupernova::$config->var_online_user_count . ";");
   }
 }
 
 
 
-//pdump($sn_module);die();
 
 global $user;
-// $result = core_auth::login();
 $result = classSupernova::$auth->login();
 
 global $account_logged_in;
 $account_logged_in = !empty(classSupernova::$auth->account) && $result[F_LOGIN_STATUS] == LOGIN_SUCCESS;
-
-//pdump($result[F_LOGIN_STATUS], LOGIN_SUCCESS);
-// die();
-
-// pdump($result);die();
 
 $user = !empty($result[F_USER]) ? $result[F_USER] : false;
 
@@ -345,7 +292,6 @@ unset($result);
 // В этой точке пользователь либо авторизирован - и есть его запись - либо пользователя гарантированно нет в базе
 
 $template_result[F_ACCOUNT_IS_AUTHORIZED] = $sys_user_logged_in = !empty($user) && isset($user['id']) && $user['id'];
-//pdump($template_result[F_ACCOUNT_IS_AUTHORIZED]);die();
 
 if(!empty($user['id'])) {
   classSupernova::$user_options->user_change($user['id']);
@@ -353,7 +299,7 @@ if(!empty($user['id'])) {
 
 // Если сообщение пустое - заполняем его по коду
 $template_result[F_LOGIN_MESSAGE] =
-  isset($template_result[F_LOGIN_MESSAGE]) && $template_result[F_LOGIN_MESSAGE]
+  !empty($template_result[F_LOGIN_MESSAGE])
     ? $template_result[F_LOGIN_MESSAGE]
     : ($template_result[F_LOGIN_STATUS] != LOGIN_UNDEFINED
         ? $lang['sys_login_messages'][$template_result[F_LOGIN_STATUS]]
@@ -378,15 +324,29 @@ $lang->lng_switch(sys_get_param_str('lang'));
 global $dpath;
 $dpath = $user["dpath"] ? $user["dpath"] : DEFAULT_SKINPATH;
 
-$config->db_loadItem('game_disable') == GAME_DISABLE_INSTALL
+classSupernova::$config->db_loadItem('game_disable') == GAME_DISABLE_INSTALL
   ? define('INSTALL_MODE', GAME_DISABLE_INSTALL)
   : false;
 
-if($template_result[F_GAME_DISABLE] = $config->game_disable) {
+if(
+  classSupernova::$config->game_disable == GAME_DISABLE_STAT
+  &&
+  SN_TIME_NOW - strtotime(classSupernova::$config->db_loadItem('var_stat_update_end')) > 600
+) {
+  $next_run = date(FMT_DATE_TIME_SQL, sys_schedule_get_prev_run(classSupernova::$config->stats_schedule, classSupernova::$config->var_stat_update, true));
+  classSupernova::$config->db_saveItem('game_disable', GAME_DISABLE_NONE);
+  classSupernova::$config->db_saveItem('var_stat_update', SN_TIME_SQL);
+  classSupernova::$config->db_saveItem('var_stat_update_next', $next_run);
+  classSupernova::$config->db_saveItem('var_stat_update_end', SN_TIME_SQL);
+  $debug->warning('Stat worked too long - watchdog unlocked', 'Stat WARNING');
+}
+
+
+if($template_result[F_GAME_DISABLE] = classSupernova::$config->game_disable) {
   $template_result[F_GAME_DISABLE_REASON] = sys_bbcodeParse(
-    $config->game_disable == GAME_DISABLE_REASON
-      ? $config->game_disable_reason
-      : $lang['sys_game_disable_reason'][$config->game_disable]
+    classSupernova::$config->game_disable == GAME_DISABLE_REASON
+      ? classSupernova::$config->game_disable_reason
+      : $lang['sys_game_disable_reason'][classSupernova::$config->game_disable]
   );
   if(defined('IN_API')) {
     return;
@@ -397,7 +357,7 @@ if($template_result[F_GAME_DISABLE] = $config->game_disable) {
     &&
     !(defined('INSTALL_MODE') && defined('LOGIN_LOGOUT'))
   ) {
-    message($template_result[F_GAME_DISABLE_REASON], $config->game_name);
+    message($template_result[F_GAME_DISABLE_REASON], classSupernova::$config->game_name);
     ob_end_flush();
     die();
   }
@@ -412,8 +372,6 @@ if($template_result[F_BANNED_STATUS] && !$skip_ban_check) {
 
   $bantime = date(FMT_DATE_TIME, $template_result[F_BANNED_STATUS]);
   // TODO: Add ban reason. Add vacation time. Add message window
-  // sn_sys_logout(false, true);
-  // core_auth::logout(false, true);
   message("{$lang['sys_banned_msg']} {$bantime}", $lang['ban_title']);
   die("{$lang['sys_banned_msg']} {$bantime}");
 }
@@ -421,17 +379,11 @@ if($template_result[F_BANNED_STATUS] && !$skip_ban_check) {
 // TODO !!! Просто $allow_anonymous используется в платежных модулях !!!
 $allow_anonymous = $allow_anonymous || (isset($sn_page_data['allow_anonymous']) && $sn_page_data['allow_anonymous']);
 
-// pdump($allow_anonymous, '$allow_anonymous');
-// pdump($sys_user_logged_in, '$sys_user_logged_in');
 
 if($sys_user_logged_in && INITIAL_PAGE == 'login') {
   sys_redirect(SN_ROOT_VIRTUAL . 'overview.php');
 } elseif($account_logged_in && !$sys_user_logged_in) { // empty(core_auth::$user['id'])
-//  pdump($sn_page_name);
-//  pdump(INITIAL_PAGE);
-//  die('{Тут должна быть ваша реклама. Точнее - ввод имени игрока}');
 } elseif(!$allow_anonymous && !$sys_user_logged_in) {
-  // sn_setcookie(SN_COOKIE, '', time() - PERIOD_WEEK, SN_ROOT_RELATIVE);
   sys_redirect(SN_ROOT_VIRTUAL . 'login.php');
 }
 
@@ -447,11 +399,11 @@ define('SN_CLIENT_TIME_DIFF_GMT', $user_time_diff[PLAYER_OPTION_TIME_DIFF]); // 
 !empty($sn_mvc['i18n']['']) ? lng_load_i18n($sn_mvc['i18n']['']) : false;
 $sn_page_name && !empty($sn_mvc['i18n'][$sn_page_name]) ? lng_load_i18n($sn_mvc['i18n'][$sn_page_name]) : false;
 
-execute_hooks($sn_mvc['model'][''], $template);
+execute_hooks($sn_mvc['model'][''], $template, 'model', '');
 
 global $skip_fleet_update;
-$skip_fleet_update = $skip_fleet_update || $supernova->options['fleet_update_skip'] || defined('IN_ADMIN');
-if(!$skip_fleet_update && SN_TIME_NOW - strtotime($config->fleet_update_last) > $config->fleet_update_interval) {
+$skip_fleet_update = $skip_fleet_update || classSupernova::$options['fleet_update_skip'] || defined('IN_ADMIN');
+if(!$skip_fleet_update && SN_TIME_NOW - strtotime(classSupernova::$config->fleet_update_last) > classSupernova::$config->fleet_update_interval) {
   require_once(SN_ROOT_PHYSICAL . "includes/includes/flt_flying_fleet_handler2" . DOT_PHP_EX);
   flt_flying_fleet_handler($skip_fleet_update);
 }

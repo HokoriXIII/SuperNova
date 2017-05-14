@@ -48,8 +48,9 @@ $HavePhalanx   = mrc_get_level($user, $planetrow, STRUC_MOON_PHALANX);
 $CurrentSystem = $planetrow['system'];
 $CurrentGalaxy = $planetrow['galaxy'];
 
-$maxfleet       = doquery("SELECT COUNT(*) AS flying_fleet_count FROM {{fleets}} WHERE `fleet_owner` = '{$user['id']}';", '', true);
-$maxfleet_count = $maxfleet['flying_fleet_count'];
+//$maxfleet       = doquery("SELECT COUNT(*) AS flying_fleet_count FROM {{fleets}} WHERE `fleet_owner` = '{$user['id']}';", '', true);
+//$maxfleet_count = $maxfleet['flying_fleet_count'];
+$flying_fleet_count = fleet_count_flying($user['id']);
 
 if ($mode == 1) {
 } elseif ($mode == 2 || $mode == 3) {
@@ -60,9 +61,9 @@ if ($mode == 1) {
   $planet = $planetrow['planet'];
 }
 
-$uni_galaxy = $uni_galaxy < 1 ? 1 : ($uni_galaxy > $config->game_maxGalaxy ? $config->game_maxGalaxy : $uni_galaxy);
-$uni_system = $uni_system < 1 ? 1 : ($uni_system > $config->game_maxSystem ? $config->game_maxSystem : $uni_system);
-$planet = $planet < 1 ? 1 : ($planet > $config->game_maxPlanet + 1 ? $config->game_maxPlanet + 1 : $planet);
+$uni_galaxy = $uni_galaxy < 1 ? 1 : ($uni_galaxy > classSupernova::$config->game_maxGalaxy ? classSupernova::$config->game_maxGalaxy : $uni_galaxy);
+$uni_system = $uni_system < 1 ? 1 : ($uni_system > classSupernova::$config->game_maxSystem ? classSupernova::$config->game_maxSystem : $uni_system);
+$planet = $planet < 1 ? 1 : ($planet > classSupernova::$config->game_maxPlanet + 1 ? classSupernova::$config->game_maxPlanet + 1 : $planet);
 
 $planetcount = 0;
 $lunacount   = 0;
@@ -77,7 +78,7 @@ $CurrentPoints = $user['total_points'];
 $MissileRange  = flt_get_missile_range($user);
 $PhalanxRange  = GetPhalanxRange($HavePhalanx);
 
-$planet_precache_query = db_planet_list_in_system($uni_galaxy, $uni_system);
+$planet_precache_query = DBStaticPlanet::db_planet_list_in_system($uni_galaxy, $uni_system);
 // while($planet_row = db_fetch($planet_precache_query))
 if(!empty($planet_precache_query))
 foreach($planet_precache_query as $planet_row)
@@ -86,14 +87,20 @@ foreach($planet_precache_query as $planet_row)
 }
 
 
-$fleet_precache_query = doquery(
-  "SELECT * FROM {{fleets}} WHERE
-    (fleet_start_galaxy = {$uni_galaxy} AND fleet_start_system = {$uni_system} AND fleet_mess = 1)
-    OR
-    (fleet_end_galaxy = {$uni_galaxy} AND fleet_end_system = {$uni_system} AND fleet_mess = 0);"
-);
-while($fleet_row = db_fetch($fleet_precache_query))
-{
+//$fleet_precache_query = doquery(
+//  "SELECT * FROM {{fleets}} WHERE
+//    (fleet_start_galaxy = {$uni_galaxy} AND fleet_start_system = {$uni_system} AND fleet_mess = 1)
+//    OR
+//    (fleet_end_galaxy = {$uni_galaxy} AND fleet_end_system = {$uni_system} AND fleet_mess = 0);"
+//);
+//while($fleet_row = db_fetch($fleet_precache_query))
+//{
+//  $fleet_planet = $fleet_row['fleet_mess'] == 0 ? $fleet_row['fleet_end_planet'] : $fleet_row['fleet_start_planet'];
+//  $fleet_type   = $fleet_row['fleet_mess'] == 0 ? $fleet_row['fleet_end_type'] : $fleet_row['fleet_start_type'];
+//  $fleet_list[$fleet_planet][$fleet_type][] = $fleet_row;
+//}
+$system_fleet_list = fleet_list_by_planet_coords($uni_galaxy, $uni_system);
+foreach($system_fleet_list as $fleet_row) {
   $fleet_planet = $fleet_row['fleet_mess'] == 0 ? $fleet_row['fleet_end_planet'] : $fleet_row['fleet_start_planet'];
   $fleet_type   = $fleet_row['fleet_mess'] == 0 ? $fleet_row['fleet_end_type'] : $fleet_row['fleet_start_type'];
   $fleet_list[$fleet_planet][$fleet_type][] = $fleet_row;
@@ -117,7 +124,7 @@ foreach(sn_get_groups('flt_recyclers') as $recycler_id)
 $user_skip_list = sys_stat_get_user_skip_list();
 $fleet_id = 1;
 $fleets = array();
-$config_game_max_planet = $config->game_maxPlanet + 1;
+$config_game_max_planet = classSupernova::$config->game_maxPlanet + 1;
 for ($Planet = 1; $Planet < $config_game_max_planet; $Planet++)
 {
   unset($uni_galaxyRowPlanet);
@@ -150,7 +157,7 @@ for ($Planet = 1; $Planet < $config_game_max_planet; $Planet++)
       $debug->warning("Planet '{$uni_galaxyRowPlanet['name']}' [{$uni_galaxy}:{$uni_system}:{$Planet}] has no owner!", 'Userless planet', 503);
       $uni_galaxyRowPlanet['destruyed'] = SN_TIME_NOW + 60 * 60 * 24;
       $uni_galaxyRowPlanet['id_owner'] = 0;
-      db_planet_set_by_id($uni_galaxyRowPlanet['id'], "id_owner = 0, destruyed = {$uni_galaxyRowPlanet['destruyed']}");
+      DBStaticPlanet::db_planet_set_by_id($uni_galaxyRowPlanet['id'], "id_owner = 0, destruyed = {$uni_galaxyRowPlanet['destruyed']}");
     }
 
     if($uni_galaxyRowUser['id'])
@@ -268,9 +275,9 @@ for ($Planet = 1; $Planet < $config_game_max_planet; $Planet++)
      'USER_ACTIVITY' => $user_activity,
      'USER_ATTACKABLE' => $user_activity >= 7,
      'USER_INACTIVE' => $user_activity >= 28,
-     'USER_PROTECTED'=> $RowUserPoints <= $config->game_noob_points,
-     'USER_NOOB'     => $RowUserPoints * $config->game_noob_factor < $CurrentPoints && $config->game_noob_factor,
-     'USER_STRONG'   => $CurrentPoints * $config->game_noob_factor < $RowUserPoints && $config->game_noob_factor,
+     'USER_PROTECTED'=> $RowUserPoints <= classSupernova::$config->game_noob_points,
+     'USER_NOOB'     => $RowUserPoints * classSupernova::$config->game_noob_factor < $CurrentPoints && classSupernova::$config->game_noob_factor,
+     'USER_STRONG'   => $CurrentPoints * classSupernova::$config->game_noob_factor < $RowUserPoints && classSupernova::$config->game_noob_factor,
      'USER_AUTH'     => $uni_galaxyRowUser['authlevel'],
      'USER_ADMIN'    => $lang['user_level_shortcut'][$uni_galaxyRowUser['authlevel']],
      'USER_BIRTHDAY' => $birthday_array['month'] == $time_now_parsed['mon'] && $birthday_array['day'] == $time_now_parsed['mday'] ? date(FMT_DATE, SN_TIME_NOW) : 0,
@@ -343,9 +350,9 @@ $system_name = doquery("select `universe_name` from `{{universe}}` where `univer
 
 $template->assign_vars(array(
      'rows'                => $Result,
-     'userCount'           => $config->users_amount,
+     'userCount'           => classSupernova::$config->users_amount,
      'ALLY_COUNT'          => $ally_count['ally_count'],
-     'PLANET_EXPEDITION'   => $config->game_maxPlanet + 1,
+     'PLANET_EXPEDITION'   => classSupernova::$config->game_maxPlanet + 1,
      'curPlanetID'         => $planetrow['id'],
      'curPlanetG'          => $planetrow['galaxy'],
      'curPlanetS'          => $planetrow['system'],
@@ -360,7 +367,7 @@ $template->assign_vars(array(
      'planets'             => $planetcount,
      'SPs'                 => pretty_number(mrc_get_level($user, $planetrow, SHIP_SPY, false, true)),
      'SHOW_ADMIN'          => SHOW_ADMIN,
-     'fleet_count'         => $maxfleet_count,
+     'fleet_count'         => $flying_fleet_count,
      'fleet_max'           => $fleetmax,
      'ALLY_ID'             => $user['ally_id'],
      'USER_ID'             => $user['id'],

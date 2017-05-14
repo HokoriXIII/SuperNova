@@ -34,7 +34,7 @@ function sn_options_model() {
   if(sys_get_param_str('mode') == 'change') {
     if($user['authlevel'] > 0) {
       $planet_protection = sys_get_param_int('adm_pl_prot') ? $user['authlevel'] : 0;
-      db_planet_set_by_owner($user['id'], "`id_level` = '{$planet_protection}'");
+      DBStaticPlanet::db_planet_set_by_owner($user['id'], "`id_level` = '{$planet_protection}'");
       db_user_set_by_id($user['id'], "`admin_protection` = '{$planet_protection}'");
       $user['admin_protection'] = $planet_protection;
     }
@@ -47,9 +47,12 @@ function sn_options_model() {
           die();
         }
 
-        $is_building = doquery("SELECT * FROM `{{fleets}}` WHERE `fleet_owner` = '{$user['id']}' LIMIT 1;", true);
-
-        if($is_building) {
+//        $is_building = doquery("SELECT * FROM `{{fleets}}` WHERE `fleet_owner` = '{$user['id']}' LIMIT 1;", true);
+//        if($is_building) {
+//          message($lang['opt_vacation_err_your_fleet'], $lang['Error'], 'index.php?page=options', 5);
+//          die();
+//        }
+        if(fleet_count_flying($user['id'])) {
           message($lang['opt_vacation_err_your_fleet'], $lang['Error'], 'index.php?page=options', 5);
           die();
         }
@@ -65,7 +68,7 @@ function sn_options_model() {
           // $planet = sys_o_get_updated($user, $planet, SN_TIME_NOW);
           // $planet = $planet['planet'];
 
-          db_planet_set_by_id($planet['id'],
+          DBStaticPlanet::db_planet_set_by_id($planet['id'],
             "last_update = " . SN_TIME_NOW . ", energy_used = '0', energy_max = '0',
             metal_perhour = '{$config->metal_basic_income}', crystal_perhour = '{$config->crystal_basic_income}', deuterium_perhour = '{$config->deuterium_basic_income}',
             metal_mine_porcent = '0', crystal_mine_porcent = '0', deuterium_sintetizer_porcent = '0', solar_plant_porcent = '0',
@@ -98,8 +101,6 @@ function sn_options_model() {
         $value = intval($value);
       });
       classSupernova::$user_options->offsetSet($player_options);
-      // pdump($player_options);die();
-      //      player_save_option_array($user, $player_options);
     }
 
     $username = substr(sys_get_param_str_unsafe('username'), 0, 32);
@@ -381,6 +382,10 @@ function sn_options_view($template = null) {
     'sound_enabled'                           => classSupernova::$user_options[PLAYER_OPTION_SOUND_ENABLED],
     'PLAYER_OPTION_ANIMATION_DISABLED'        => classSupernova::$user_options[PLAYER_OPTION_ANIMATION_DISABLED],
     'PLAYER_OPTION_PROGRESS_BARS_DISABLED'    => classSupernova::$user_options[PLAYER_OPTION_PROGRESS_BARS_DISABLED],
+    'PLAYER_OPTION_FLEET_SHIP_SELECT_OLD'     => classSupernova::$user_options[PLAYER_OPTION_FLEET_SHIP_SELECT_OLD],
+    'PLAYER_OPTION_FLEET_SHIP_HIDE_SPEED'     => classSupernova::$user_options[PLAYER_OPTION_FLEET_SHIP_HIDE_SPEED],
+    'PLAYER_OPTION_FLEET_SHIP_HIDE_CAPACITY'     => classSupernova::$user_options[PLAYER_OPTION_FLEET_SHIP_HIDE_CAPACITY],
+    'PLAYER_OPTION_FLEET_SHIP_HIDE_CONSUMPTION'     => classSupernova::$user_options[PLAYER_OPTION_FLEET_SHIP_HIDE_CONSUMPTION],
 
     'ADM_PROTECT_PLANETS' => $user['authlevel'] >= 3,
     'opt_usern_data'      => htmlspecialchars($user['username']),
@@ -393,6 +398,7 @@ function sn_options_view($template = null) {
     'PLAYER_OPTION_TOOLTIP_DELAY'          => classSupernova::$user_options[PLAYER_OPTION_TOOLTIP_DELAY],
     'PLAYER_OPTION_BUILD_AUTOCONVERT_HIDE' => classSupernova::$user_options[PLAYER_OPTION_BUILD_AUTOCONVERT_HIDE],
 
+    'PLAYER_OPTION_NAVBAR_PLANET_VERTICAL'       => classSupernova::$user_options[PLAYER_OPTION_NAVBAR_PLANET_VERTICAL],
     'PLAYER_OPTION_NAVBAR_RESEARCH_WIDE'         => classSupernova::$user_options[PLAYER_OPTION_NAVBAR_RESEARCH_WIDE],
     'PLAYER_OPTION_NAVBAR_DISABLE_EXPEDITIONS'   => classSupernova::$user_options[PLAYER_OPTION_NAVBAR_DISABLE_EXPEDITIONS],
     'PLAYER_OPTION_NAVBAR_DISABLE_FLYING_FLEETS' => classSupernova::$user_options[PLAYER_OPTION_NAVBAR_DISABLE_FLYING_FLEETS],

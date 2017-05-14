@@ -1,7 +1,7 @@
 /* Boilerplate */
 
 /* Rid of annoying Chrome on Android FontBoositng featurebug */
-body * {
+body, body * {
   max-height: 1000000em;
 }
 
@@ -216,6 +216,10 @@ textarea {
   height: 100%;
 }
 
+.h2em {
+  height: 2em;
+}
+
 /* Absolute Positioning */
 
 /* Fill container - usually images */
@@ -279,7 +283,8 @@ textarea {
 /* Container Flex - Base Flex Container */
 /* One-line vertically centered, space distributed non-wrapping  */
 .contF,
-.contFJ
+.contFJ,
+.contFS
 {
   display: flex;
 
@@ -292,13 +297,75 @@ textarea {
 /* Container Flex Justify */
 /* Replacement for float-left + float-right: Flex, non-wrapping, one-line vertically centered, item justified  */
 .contFJ {
-
+  text-align: left;
   justify-content: space-between;
+}
+.contFS {
+  text-align: left;
+  justify-content: flex-start;
+}
 
-  /*align-content: space-around;*/
-  /*align-items: center;*/
+.flexW {
+  flex-wrap: wrap;
 }
 
 /*.FW {*/
   /*flex-wrap: wrap;*/
 /*}*/
+
+
+body.blitz_ {
+  background-image: none;
+  background-color: black;
+  background-repeat: no-repeat;
+  background-size: 100% auto ;
+  background-position: bottom 0 right 0;
+}
+
+@media only screen and (max-width: 479px) {
+}
+
+@media only screen and (min-width: 480px) {
+  body.blitz_ {
+    background-image: url(../images/background_blitz_0500.jpg);
+  }
+}
+
+@media only screen and (min-width: 580px) {
+  body.blitz_ {
+    background-image: url(../images/background_blitz_0600.jpg);
+  }
+}
+
+/* Desktops and laptops medium-res */
+@media only screen and (min-width: 760px) {
+  body.blitz_ {
+    background-image: url(../images/background_blitz_0800.jpg);
+  }
+}
+
+/* Desktops and laptops ----------- */
+@media only screen and (min-width: 950px) {
+  body.blitz_ {
+    background-image: url(../images/background_blitz_1024.jpg);
+  }
+}
+
+@media only screen and (min-width: 1224px) {
+  body.blitz_ {
+    background-image: url(../images/background_blitz_1280.jpg);
+  }
+}
+
+/* Large screens ----------- */
+@media only screen and (min-width: 1550px) {
+  body.blitz_ {
+    background-image: url(../images/background_blitz_1600.jpg);
+  }
+}
+
+@media only screen and (min-width: 1824px) {
+  body.blitz_ {
+    background-image: url(../images/background_blitz_1920.jpg);
+  }
+}

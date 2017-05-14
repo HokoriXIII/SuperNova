@@ -82,14 +82,14 @@ function upd_unset_table_info($table_name) {
 }
 
 function upd_load_table_info($prefix_table_name, $prefixed = true) {
-  global $config, $update_tables, $update_indexes, $update_foreigns;
+  global $config, $update_tables, $update_indexes, $update_indexes_full, $update_foreigns;
 
   $tableName = $prefixed ? str_replace($config->db_prefix, '', $prefix_table_name) : $prefix_table_name;
   $prefix_table_name = $prefixed ? $prefix_table_name : $config->db_prefix . $prefix_table_name;
 
   upd_unset_table_info($tableName);
 
-  $q1 = upd_do_query("SHOW COLUMNS FROM {$prefix_table_name};", true);
+  $q1 = upd_do_query("SHOW FULL COLUMNS FROM {$prefix_table_name};", true);
   while($r1 = db_fetch($q1)) {
     $update_tables[$tableName][$r1['Field']] = $r1;
   }
@@ -97,6 +97,7 @@ function upd_load_table_info($prefix_table_name, $prefixed = true) {
   $q1 = upd_do_query("SHOW INDEX FROM {$prefix_table_name};", true);
   while($r1 = db_fetch($q1)) {
     $update_indexes[$tableName][$r1['Key_name']] .= "{$r1['Column_name']},";
+    $update_indexes_full[$tableName][$r1['Key_name']][$r1['Column_name']] = $r1;
   }
 
   $q1 = upd_do_query("SELECT * FROM `information_schema`.`KEY_COLUMN_USAGE` WHERE `TABLE_SCHEMA` = '" . db_escape(classSupernova::$db_name). "' AND TABLE_NAME = '{$prefix_table_name}' AND REFERENCED_TABLE_NAME is not null;", true);
@@ -172,7 +173,7 @@ function upd_db_unit_by_location($user_id = 0, $location_type, $location_id, $un
     "SELECT {$fields}
     FROM {{unit}}
     WHERE
-      `unit_location_type` = {$location_type} AND `unit_location_id` = {$location_id} AND " . db_unit_time_restrictions() .
+      `unit_location_type` = {$location_type} AND `unit_location_id` = {$location_id} AND " . DBStaticUnit::db_unit_time_restrictions() .
     ($user_id = intval($user_id) ? " AND `unit_player_id` = {$user_id}" : '') .
     ($unit_snid = intval($unit_snid) ? " AND `unit_snid` = {$unit_snid}" : '') .
     " LIMIT 1" .
@@ -285,11 +286,6 @@ function upd_db_changeset_apply($db_changeset) {
 
         case SQL_OP_UPDATE:
           if($fields) {
-            /*if($table_name == 'unit')
-            {
-              pdump("UPDATE {{{$table_name}}} SET {$fields} {$where}");
-              //die();
-            }*/
             upd_do_query("UPDATE {{{$table_name}}} SET {$fields} {$where}");
           }
           break;

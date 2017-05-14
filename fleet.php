@@ -56,16 +56,18 @@ $options = array();
 $options['fleets_max'] = GetMaxFleets($user);
 
 $MaxFleets = GetMaxFleets($user);
-$FlyingFleets = doquery("SELECT COUNT(fleet_id) as Number FROM {{fleets}} WHERE `fleet_owner`='{$user['id']}'", '', true);
-$FlyingFleets = $FlyingFleets['Number'];
+//$FlyingFleets = doquery("SELECT COUNT(fleet_id) as Number FROM {{fleets}} WHERE `fleet_owner`='{$user['id']}'", true);
+//$FlyingFleets = $FlyingFleets['Number'];
+$FlyingFleets = fleet_count_flying($user['id']);
 if($MaxFleets <= $FlyingFleets && $fleet_page && $fleet_page != 4) {
   message($lang['fl_noslotfree'], $lang['fl_error'], "fleet." . PHP_EX, 5);
 }
 
 $MaxExpeditions = get_player_max_expeditons($user);
 if($MaxExpeditions) {
-  $FlyingExpeditions  = doquery("SELECT COUNT(fleet_owner) AS `expedi` FROM {{fleets}} WHERE `fleet_owner` = {$user['id']} AND `fleet_mission` = '" . MT_EXPLORE . "';", '', true);
-  $FlyingExpeditions  = $FlyingExpeditions['expedi'];
+//  $FlyingExpeditions  = doquery("SELECT COUNT(fleet_owner) AS `expedi` FROM {{fleets}} WHERE `fleet_owner` = {$user['id']} AND `fleet_mission` = '" . MT_EXPLORE . "';", '', true);
+//  $FlyingExpeditions  = $FlyingExpeditions['expedi'];
+  $FlyingExpeditions  = fleet_count_flying($user['id'], MT_EXPLORE);
 } else {
   $FlyingExpeditions = 0;
 }
@@ -89,13 +91,13 @@ switch ($fleet_page) {
     $UsedPlanet = false;
     $YourPlanet = false;
     $missiontype = array();
-    if ($planet > $config->game_maxPlanet) {
+    if ($planet > classSupernova::$config->game_maxPlanet) {
       $target_mission = MT_EXPLORE;
       $missiontype[MT_EXPLORE] = $lang['type_mission'][MT_EXPLORE];
     } elseif ($galaxy && $system && $planet) {
       $check_type = $planet_type == PT_MOON ? PT_MOON : PT_PLANET;
 
-      $TargetPlanet = db_planet_by_gspt($galaxy, $system, $planet, $check_type);
+      $TargetPlanet = DBStaticPlanet::db_planet_by_gspt($galaxy, $system, $planet, $check_type);
 
       if ($TargetPlanet['id_owner']) {
         $UsedPlanet = true;
@@ -175,7 +177,7 @@ switch ($fleet_page) {
     if ($galaxy && $system && $planet) {
       $check_type = $planet_type == PT_MOON ? PT_MOON : PT_PLANET;
 
-      $TargetPlanet = db_planet_by_gspt($galaxy, $system, $planet, $check_type);
+      $TargetPlanet = DBStaticPlanet::db_planet_by_gspt($galaxy, $system, $planet, $check_type);
     }
 
   case 0:

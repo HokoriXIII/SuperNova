@@ -50,7 +50,7 @@ if ($planetrow['deuterium'] < $cost)
   message($lang['phalanx_nodeuterium'], "phalanx", '', 3);
 }
 
-$planet_scanned = db_planet_by_gspt($scan_galaxy, $scan_system, $scan_planet, $scan_planet_type);
+$planet_scanned = DBStaticPlanet::db_planet_by_gspt($scan_galaxy, $scan_system, $scan_planet, $scan_planet_type);
 if(!$planet_scanned['id'])
 {
   message($lang['phalanx_planet_not_exists'], $lang['tech'][STRUC_MOON_PHALANX], '', 3);
@@ -61,11 +61,11 @@ if($planet_scanned['destruyed'])
   message ($lang['phalanx_planet_destroyed'], $lang['tech'][STRUC_MOON_PHALANX], '', 3);
 }
 
-db_planet_set_by_id($user['current_planet'], "deuterium = deuterium - {$cost}");
+DBStaticPlanet::db_planet_set_by_id($user['current_planet'], "deuterium = deuterium - {$cost}");
 
 $template = gettemplate('planet_fleet_list', true);
 
-$fleet_list = flt_get_fleets($planet_scanned, true);
+$fleet_list = fleet_and_missiles_list_by_coordinates($planet_scanned, true);
 $fleets = flt_parse_fleets_to_events($fleet_list, $planet_scanned);
 //int_get_missile_to_planet("SELECT * FROM `{{iraks}}` WHERE fleet_end_galaxy = {$scan_galaxy} AND fleet_end_system = {$scan_system} AND fleet_end_planet = {$scan_planet};");
 tpl_assign_fleet($template, $fleets);

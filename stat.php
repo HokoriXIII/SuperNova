@@ -107,9 +107,7 @@ $start = floor($range / 100 % 100) * 100;
 $query = db_stat_list_statistic($who, $is_common_stat, $Rank, $start, $source);
 
 // TODO - Не работает, если игроков на Блице > 100
-$record_count = $source ? db_num_rows($query) : ($who == 1 ? db_user_count() : db_ally_count());
-// pdump($record_count, '$record_count');
-// $record_count = db_num_rows($query);
+$record_count = $source ? db_num_rows($query) : ($who == 1 ? db_user_count() : DBStaticAlly::db_ally_count());
 
 $page_count = floor($record_count / 100);
 $pages = array();
@@ -131,22 +129,13 @@ while ($row = db_fetch($query)) {
     'RANK_CHANGE' => $row['rank_old'] ? $row['rank_old'] - $row['rank'] : 0,
     'POINTS' => pretty_number($row['points']),
   );
-//pdump($row);
 
   if($who == 1) {
     $row_stat['ALLY_NAME'] = $row['ally_name'];
     $row_stat['ALLY_ID'] = $row['ally_id'];
     empty($row['username']) ? $row['username'] = $row['name'] : false;
     $row_stat['NAME'] = player_nick_render_to_html($row, array('icons' => empty($source), 'color' => empty($source)));
-//    $row_stat['NAME'] = player_nick_render_to_html(array(
-//      'id' => $row['id'],
 //      // TODO - Добавлять реальное имя игрока на Блице для закрытого раунда
-//      'username' => $row['name'],
-//      'gender' => isset($row['gender']) ? $row['gender'] : GENDER_UNKNOWN,
-//      // 'gender',
-//      // 'race',
-//      // 'ally_tag',
-//    ), array('icons' => empty($source), 'color' => empty($source)));
   } else {
     $row_stat['MEMBERS'] = $row['ally_members'];
     $row_stat['POINTS_PER_MEMBER'] = pretty_number(floor($row['points'] / $row['ally_members']));
@@ -156,9 +145,9 @@ while ($row = db_fetch($query)) {
   $template->assign_block_vars('stat', $row_stat);
 }
 
-$next_run = sys_schedule_get_prev_run($config->stats_schedule, $config->var_stat_update, true);
+$next_run = sys_schedule_get_prev_run(classSupernova::$config->stats_schedule, classSupernova::$config->var_stat_update, true);
 $template->assign_vars(array(
-  'REFRESH_DATE' => $config->var_stat_update ? date(FMT_DATE_TIME, strtotime($config->var_stat_update) + SN_CLIENT_TIME_DIFF) : '',
+  'REFRESH_DATE' => classSupernova::$config->var_stat_update ? date(FMT_DATE_TIME, strtotime(classSupernova::$config->var_stat_update) + SN_CLIENT_TIME_DIFF) : '',
   'NEXT_DATE' => $next_run ? date(FMT_DATE_TIME, $next_run + SN_CLIENT_TIME_DIFF) : '',
   'RANGE' => $range,
   'SUBJECT' => $who,
@@ -167,7 +156,7 @@ $template->assign_vars(array(
   // TODO - Для блица - вытаскивать blitz_player_id и подсвечивать пользователя на блице
   'USER_ID' => $source ? 0 : $user['id'],
   'SOURCE' => $source,
-  'STATS_HIDE_PM_LINK' => $config->stats_hide_pm_link || $source,
+  'STATS_HIDE_PM_LINK' => classSupernova::$config->stats_hide_pm_link || $source,
 ));
 
 display($template, $lang['stat_header'], !empty($user), '', false, !empty($user));
